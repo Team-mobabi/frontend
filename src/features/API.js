@@ -1,57 +1,51 @@
 const BASE_URL =
     (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_BASE_URL) ||
-    (typeof window !== "undefined" && window.__API_BASE_URL__) ||
-    "";
+    (typeof window !== "undefined" && window.__API_BASE_URL__) || "";
 
 const DEBUG = String(import.meta.env?.VITE_API_DEBUG ?? import.meta.env?.DEV).toLowerCase() === "true";
 
 const tokenKey = "gitgui_token";
-export function getToken() {
-    try { return localStorage.getItem(tokenKey) || ""; } catch { return ""; }
-}
-export function setToken(t) {
-    try { t ? localStorage.setItem(tokenKey, t) : localStorage.removeItem(tokenKey); } catch {}
-}
-export function clearToken() { setToken(""); }
+export function getToken(){ try { return localStorage.getItem(tokenKey) || ""; } catch { return ""; } }
+export function setToken(t){ try { t ? localStorage.setItem(tokenKey, t) : localStorage.removeItem(tokenKey); } catch {} }
+export function clearToken(){ setToken(""); }
 
-function qs(params) {
-    const q = params ? new URLSearchParams(params).toString() : "";
-    return q ? `?${q}` : "";
-}
+function qs(params){ const q = params ? new URLSearchParams(params).toString() : ""; return q ? `?${q}` : ""; }
 
 async function request(method, path, body, options = {}) {
     const authToken = getToken();
-    if (DEBUG) console.info("[API →]", method, (BASE_URL || "") + path, { hasToken: !!authToken, body });
+    const url = (BASE_URL || "") + path;
+    if (DEBUG) console.info("[API →]", method, url, { hasToken: !!authToken, body });
 
-    const headers = {
-        ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
-        ...(options.headers || {}),
-    };
-
+    const headers = { ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}), ...(options.headers || {}) };
     const isForm = typeof FormData !== "undefined" && body instanceof FormData;
     if (body != null && !isForm && headers["Content-Type"] == null) headers["Content-Type"] = "application/json";
 
-    const res = await fetch((BASE_URL || "") + path, {
-        method,
-        headers,
-        body: body != null ? (isForm ? body : JSON.stringify(body)) : undefined,
-        ...options,
-    });
+    const res = await fetch(url, { method, headers, body: body != null ? (isForm ? body : JSON.stringify(body)) : undefined, ...options });
 
+    const noContent = res.status === 204 || res.headers.get("Content-Length") === "0";
+    const ct = res.headers.get("Content-Type") || "";
     let data = null;
-    try { data = await res.json(); } catch {}
+    let rawText = "";
+    try {
+        if (noContent) data = { success: true, __empty: true };
+        else if (ct.includes("application/json")) data = await res.json();
+        else { rawText = await res.text(); try { data = JSON.parse(rawText); } catch { data = null; } }
+    } catch {}
 
-    if (DEBUG) console.info(res.ok ? "[API ← OK]" : "[API ← ERR]", res.status, data);
+    if (DEBUG) console.info(res.ok ? "[API ← OK]" : "[API ← ERR]", res.status, data || rawText);
 
     if (!res.ok || (data && data.success === false)) {
         if (res.status === 401) clearToken();
-        const msg = (data && (data.message || data.error)) || `HTTP ${res.status} ${res.statusText}`;
-        const err = new Error(msg);
+        const msg = (data && (data.message || data.error)) || rawText || `HTTP ${res.status} ${res.statusText}`;
+        const err = new Error(typeof msg === "string" ? msg : JSON.stringify(msg));
         err.status = res.status;
         err.data = data;
+        err.dataRaw = rawText;
+        err.endpoint = url;
+        err.method = method;
         throw err;
     }
-    return data;
+    return data ?? { success: true };
 }
 
 export const api = {
@@ -59,7 +53,7 @@ export const api = {
         signup: (payload) => request("POST", "/auth/signup", payload),
         signin: async (payload) => {
             const data = await request("POST", "/auth/signin", payload);
-            const token = data?.token || data?.accessToken || data?.access_token || data?.jwt || data?.id_token;
+            const token = data?.token || data?.accessToken || data?.access_token || data?.jwt || data?.id_token || data?.result?.token;
             if (!token) throw new Error("로그인 응답에 token이 없습니다.");
             setToken(token);
             if (DEBUG) console.info("[AUTH] token stored?", !!token);
@@ -78,22 +72,25 @@ export const api = {
         add: (id, files) => request("POST", `/repos/${id}/add`, { files }),
         commit: (id, message) => request("POST", `/repos/${id}/commit`, { message }),
         pull: (id) => request("POST", `/repos/${id}/pull`),
-        push: (id) => request("POST", `/repos/${id}/push`),
-        graph: (id) => request("GET", `/repos/${id}/graph`),
-        upload: async (id, fileList) => {
-            const fd = new FormData();
-            for (const f of fileList) fd.append("files", f, f.name);
-            let up = null;
-            try {
-                up = await request("POST", `/repos/${id}/add`, fd);
-            } catch (e) {
-                up = await request("POST", `/repos/${id}/add`, fd);
+        push: async (id, opts = {}) => {
+            const safe = {};
+            if (opts && typeof opts === "object") {
+                if (typeof opts.upstream === "boolean") safe.upstream = opts.upstream;
+                if (typeof opts.force === "boolean") safe.force = opts.force;
             }
-            let saved = Array.isArray(up) ? up
-                : (up?.saved || up?.paths || up?.files || up?.savedPaths || up?.added || []);
-            if (!Array.isArray(saved)) saved = [];
-            return { saved };
+            const hasBody = Object.keys(safe).length > 0;
+            try {
+                return hasBody
+                    ? await request("POST", `/repos/${id}/push`, safe)
+                    : await request("POST", `/repos/${id}/push`, undefined);
+            } catch (e) {
+                const msg = (e?.data?.message || e?.message || "").toString().toLowerCase();
+                const softOk = e?.status === 204 || /already up.to.date|nothing to push|tracking/i.test(msg);
+                if (softOk) return { success: true, softOk: true, message: msg };
+                throw e;
+            }
         },
+        graph: (id) => request("GET", `/repos/${id}/graph`),
     },
     branches: {
         list: (id, params) => request("GET", `/repos/${id}/branches${qs(params)}`),
@@ -104,12 +101,9 @@ export const api = {
                 return data ?? { success: true, __empty: true, message: "" };
             } catch (e) {
                 const msg = (e?.data?.message || e?.message || "").toString().toLowerCase();
-                const softOk =
-                    e?.status === 204 ||
-                    e?.status === 304 ||
-                    e?.status === 409 ||
-                    (e?.status === 400 && /already|same branch|현재 브랜치|이미/i.test(msg)) ||
-                    /already|same branch|현재 브랜치|이미/i.test(msg);
+                const softOk = e?.status === 204 || e?.status === 304 || e?.status === 409 ||
+                    (e?.status === 400 && /already|same branch|현재 브랜치|이미/.test(msg)) ||
+                    /already|same branch|현재 브랜치|이미/.test(msg);
                 if (softOk) return { success: true, softOk: true, message: msg };
                 if (e?.status === 404) {
                     await request("POST", `/repos/${id}/branches`, { name });
@@ -120,14 +114,10 @@ export const api = {
             }
         },
     },
-
     request,
 };
 
 if (import.meta.env.DEV && typeof window !== "undefined") {
     window.__api = api;
-    window.__setToken = setToken;
-    window.__getToken = getToken;
-    window.__clearToken = clearToken;
     window.__API_BASE_URL__ = BASE_URL;
 }
