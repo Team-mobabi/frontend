@@ -98,8 +98,29 @@ export const api = {
     branches: {
         list: (id, params) => request("GET", `/repos/${id}/branches${qs(params)}`),
         create: (id, name) => request("POST", `/repos/${id}/branches`, { name }),
-        switch: (id, name) => request("POST", `/repos/${id}/branches/switch`, { name }),
+        switch: async (id, name) => {
+            try {
+                const data = await request("POST", `/repos/${id}/branches/switch`, { name });
+                return data ?? { success: true, __empty: true, message: "" };
+            } catch (e) {
+                const msg = (e?.data?.message || e?.message || "").toString().toLowerCase();
+                const softOk =
+                    e?.status === 204 ||
+                    e?.status === 304 ||
+                    e?.status === 409 ||
+                    (e?.status === 400 && /already|same branch|현재 브랜치|이미/i.test(msg)) ||
+                    /already|same branch|현재 브랜치|이미/i.test(msg);
+                if (softOk) return { success: true, softOk: true, message: msg };
+                if (e?.status === 404) {
+                    await request("POST", `/repos/${id}/branches`, { name });
+                    const data2 = await request("POST", `/repos/${id}/branches/switch`, { name });
+                    return data2 ?? { success: true, __empty: true, message: "" };
+                }
+                throw e;
+            }
+        },
     },
+
     request,
 };
 

@@ -4,8 +4,43 @@ import { api } from "../../features/API";
 import AddModal from "./AddModal";
 import StagingSummary from "./StagingSummary";
 import RemoteConnectModal from "./RemoteConnectModal";
+import { getRemoteMem, setRemoteMem } from "../../features/GitCore/remoteMemory";
 
 const STEP_LABEL = { 1: "원격에서 받아오기", 2: "파일 담기", 3: "메시지 쓰고 저장", 4: "원격으로 올리기" };
+
+function normalizeBranchList(list) {
+    return Array.isArray(list) ? list : Object.keys(list || {});
+}
+function fileListOf(c) {
+    const a = c?.files || c?.changed || c?.paths || [];
+    if (Array.isArray(a) && a.length) return a.map(String);
+    const fromObj = c?.changes && typeof c.changes === "object" ? Object.keys(c.changes) : [];
+    return fromObj;
+}
+function findMissingCommits(graph, branch, direction) {
+    const local = graph?.local ?? graph?.workspace ?? graph?.localRepo ?? {};
+    const remote = graph?.remote ?? graph?.origin ?? graph?.remoteRepo ?? {};
+    const lb = local?.branches?.[branch] || [];
+    const rb = remote?.branches?.[branch] || [];
+    const lhashes = lb.map(c => c?.hash || c?.id || c?.sha || c?.oid || "");
+    const rhashes = rb.map(c => c?.hash || c?.id || c?.sha || c?.oid || "");
+    if (direction === "push") {
+        const base = rhashes[rhashes.length - 1];
+        if (!base) return lb;
+        const idx = lhashes.lastIndexOf(base);
+        return idx >= 0 ? lb.slice(idx + 1) : lb;
+    } else {
+        const base = lhashes[lhashes.length - 1];
+        if (!base) return rb;
+        const idx = rhashes.lastIndexOf(base);
+        return idx >= 0 ? rb.slice(idx + 1) : rb;
+    }
+}
+function summarizeFiles(commits) {
+    const set = new Set();
+    commits.forEach(c => fileListOf(c).forEach(f => set.add(String(f))));
+    return Array.from(set);
+}
 
 export default function ActionButtons() {
     const { state, dispatch } = useGit();
@@ -27,28 +62,26 @@ export default function ActionButtons() {
     const [busy, setBusy] = useState(false);
     const [remoteModalOpen, setRemoteModalOpen] = useState(false);
     const [pendingAction, setPendingAction] = useState(null);
-    const [remoteReady, setRemoteReady] = useState(false);
 
     const [branches, setBranches] = useState(["main"]);
     const [selPull, setSelPull] = useState("main");
     const [selPush, setSelPush] = useState("main");
 
+    const refreshBranches = async () => {
+        const rid = repoIdRef.current;
+        if (!rid) return;
+        try {
+            const list = await api.branches.list(rid);
+            const names = normalizeBranchList(list);
+            setBranches(names.length ? names : ["main"]);
+            if (!names.includes(selPull)) setSelPull(names[0] || "main");
+            if (!names.includes(selPush)) setSelPush(names[0] || "main");
+        } catch {}
+    };
+
     useEffect(() => {
         if (!hasRepo) return;
-        (async () => {
-            try {
-                const rid = repoIdRef.current;
-                const list = await api.branches.list(rid);
-                const names = Array.isArray(list) ? list : Object.keys(list || { main: [] });
-                setBranches(names.length ? names : ["main"]);
-                if (!names.includes(selPull)) setSelPull(names[0] || "main");
-                if (!names.includes(selPush)) setSelPush(names[0] || "main");
-            } catch {
-                setBranches(["main"]);
-                setSelPull("main");
-                setSelPush("main");
-            }
-        })();
+        refreshBranches();
     }, [hasRepo, selectedRepoId]);
 
     useEffect(() => {
@@ -80,58 +113,62 @@ export default function ActionButtons() {
         setTimeout(() => setToast(""), 2200);
     };
 
-    const getCurrentBranch = async (rid) => {
-        try {
-            const st = await api.repos.status(rid);
-            return st?.branch || st?.currentBranch || st?.head || "main";
-        } catch {
-            return "main";
-        }
-    };
-
     const switchOrCreateBranch = async (rid, branchName) => {
         const br = String(branchName || "main").trim();
         if (!br) throw new Error("브랜치 이름이 비어있습니다.");
         try {
-            const cur = await getCurrentBranch(rid);
-            if (cur === br) return true;
-            const list = await api.branches.list(rid);
-            const names = Array.isArray(list) ? list : Object.keys(list || {});
-            if (!names.includes(br)) {
-                try { await api.branches.create(rid, br); } catch {}
-            }
-            try {
-                await api.branches.switch(rid, br);
-                return true;
-            } catch (e) {
-                const m = (e?.data?.message || e?.message || "").toString();
-                if (/already on|is already checked out|exists/i.test(m)) return true;
-                if (/not found|unknown/i.test(m)) {
-                    try { await api.branches.create(rid, br); await api.branches.switch(rid, br); return true; } catch {}
-                }
-                throw e;
-            }
+            const res = await api.branches.switch(rid, br);
+            return { created: false, switched: true, message: res?.message || "" };
         } catch (e) {
-            const m = (e?.data?.message || e?.message || "").toString();
-            if (e?.status === 500 || /internal server error/i.test(m)) return false;
+            if (e?.status === 404) {
+                await api.branches.create(rid, br);
+                const res2 = await api.branches.switch(rid, br);
+                return { created: true, switched: true, message: res2?.message || "" };
+            }
             throw e;
         }
     };
 
-    const ensureRemoteThenBranch = async (branchName) => {
+    const ensureRemote = async () => {
         const rid = repoIdRef.current;
         if (!rid) throw new Error("레포지토리를 먼저 선택해주세요.");
-        if (!remoteReady) {
+        try {
             const st = await api.repos.status(rid);
-            if (!st?.remote) {
-                setRemoteModalOpen(true);
-                setToast("원격 저장소가 아직 연결되지 않아 연결 창을 열었어요.");
-                setTimeout(() => setToast(""), 1600);
-                throw new Error("원격 저장소가 연결되지 않았습니다.");
-            }
+            if (st?.remote) return true;
+        } catch {}
+        const mem = getRemoteMem(rid);
+        if (mem && mem.url && mem.name) {
+            try {
+                await api.repos.connectRemote(rid, { url: mem.url, name: mem.name });
+                return true;
+            } catch {}
         }
-        const ok = await switchOrCreateBranch(rid, branchName || "main");
-        return ok;
+        setRemoteModalOpen(true);
+        setToast("원격 저장소가 아직 연결되지 않아 연결 창을 열었어요.");
+        setTimeout(() => setToast(""), 1600);
+        throw new Error("원격 저장소가 연결되지 않았습니다.");
+    };
+
+    const ensureRemoteThenBranch = async (branchName) => {
+        await ensureRemote();
+        const result = await switchOrCreateBranch(repoIdRef.current, branchName || "main");
+        if (result?.message) {
+            setToast(result.message);
+            setTimeout(() => setToast(""), 1200);
+        }
+        return result?.switched === true;
+    };
+
+    const computeTransfer = async (rid, branch, type) => {
+        const g = await api.repos.graph(rid);
+        const missing = findMissingCommits(g, branch, type);
+        const commits = missing.map(c => ({
+            hash: c?.hash || c?.id || c?.sha || c?.oid || "",
+            message: c?.message || c?.msg || c?.title || "",
+            files: fileListOf(c)
+        })).filter(c => c.hash);
+        const files = summarizeFiles(missing);
+        return { type, branch, commits, files };
     };
 
     const handlePull = async (branchName) => {
@@ -139,11 +176,29 @@ export default function ActionButtons() {
         setBusy(true);
         try {
             const rid = repoIdRef.current;
-            const switched = await ensureRemoteThenBranch(branchName || "main");
+            const br = branchName || "main";
+            const switched = await ensureRemoteThenBranch(br);
             if (!switched) setToast("브랜치 전환에 문제가 있어 현재 브랜치로 받아옵니다.");
-            await api.repos.pull(rid);
-            setStep(2);
-            setRemoteReady(false);
+            await refreshBranches();
+
+            try {
+                const transfer = await computeTransfer(rid, br, "pull");
+                if (transfer.commits.length || transfer.files.length) {
+                    dispatch({ type: "SET_TRANSFER", payload: transfer });
+                    dispatch({ type: "SET_ANIMATION", payload: "pull" });
+                }
+                await api.repos.pull(rid);
+                dispatch({ type: "GRAPH_DIRTY" });
+                setStep(2);
+            } catch (e) {
+                if (e?.status === 409) {
+                    setToast("원격이 비어있거나 브랜치가 없습니다. 먼저 파일을 담고 커밋한 뒤 올려주세요.");
+                    setTimeout(() => setToast(""), 1600);
+                    setStep(2);
+                } else {
+                    throw e;
+                }
+            }
         } catch (e) {
             if (e?.message === "원격 저장소가 연결되지 않았습니다.") {
                 setPendingAction({ type: "pull", branch: branchName || "main" });
@@ -155,6 +210,7 @@ export default function ActionButtons() {
             setPullOpen(false);
         }
     };
+
 
     const handleAddConfirm = async (names) => {
         setOpenAdd(false);
@@ -204,6 +260,7 @@ export default function ActionButtons() {
             const rid = repoIdRef.current;
             await api.repos.commit(rid, text);
             dispatch({ type: "COMMIT_SUCCESS", message: text });
+            dispatch({ type: "GRAPH_DIRTY" });
             setMsg("");
             setStep(4);
         } catch (e) {
@@ -218,13 +275,18 @@ export default function ActionButtons() {
         setBusy(true);
         try {
             const rid = repoIdRef.current;
-            const switched = await ensureRemoteThenBranch(branchName || "main");
+            const br = branchName || "main";
+            const switched = await ensureRemoteThenBranch(br);
             if (!switched) setToast("브랜치 전환에 문제가 있어 현재 브랜치로 올립니다.");
+            await refreshBranches();
+            const transfer = await computeTransfer(rid, br, "push");
+            dispatch({ type: "SET_TRANSFER", payload: transfer });
+            dispatch({ type: "SET_ANIMATION", payload: "push" });
             await api.repos.push(rid);
+            dispatch({ type: "GRAPH_DIRTY" });
             setStep(1);
             setToast("원격으로 올렸어요.");
             setTimeout(() => setToast(""), 1200);
-            setRemoteReady(false);
         } catch (e) {
             if (e?.message === "원격 저장소가 연결되지 않았습니다.") {
                 setPendingAction({ type: "push", branch: branchName || "main" });
@@ -343,34 +405,17 @@ export default function ActionButtons() {
                 open={remoteModalOpen}
                 onClose={() => setRemoteModalOpen(false)}
                 repoId={safeRepoId}
-                onConnected={async () => {
+                onConnected={async (info) => {
                     setRemoteModalOpen(false);
-                    setRemoteReady(true);
-                    const rid = repoIdRef.current;
-                    try { await api.repos.status(rid); } catch {}
-                    if (pendingAction?.type === "pull") {
-                        const br = pendingAction.branch || "main";
-                        setPendingAction(null);
-                        const switched = await switchOrCreateBranch(rid, br);
-                        try { await api.repos.pull(rid); } catch {}
-                        setStep(2);
-                        setRemoteReady(false);
-                        setToast("원격에서 받아왔어요.");
-                        setTimeout(() => setToast(""), 1200);
-                        return;
-                    }
-                    if (pendingAction?.type === "push") {
-                        setPendingAction(null);
-                        try { await api.repos.push(rid); } catch {}
-                        setStep(1);
-                        setRemoteReady(false);
-                        setToast("원격으로 올렸어요.");
-                        setTimeout(() => setToast(""), 1200);
-                        return;
-                    }
+                    if (info?.url && info?.name) setRemoteMem(repoIdRef.current, info);
+                    const act = pendingAction;
                     setPendingAction(null);
-                    setToast("원격 저장소가 연결되었습니다.");
-                    setTimeout(() => setToast(""), 1200);
+                    if (!act) return;
+                    if (act.type === "pull") {
+                        await handlePull(act.branch || "main");
+                    } else if (act.type === "push") {
+                        await handlePush(act.branch || "main");
+                    }
                 }}
             />
 
