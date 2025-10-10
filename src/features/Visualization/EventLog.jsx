@@ -1,5 +1,5 @@
 import React from 'react';
-import { useGit } from '../GitCore/GitContext';
+import { useGit } from '../GitCore/GitContext.jsx';
 
 const fmt = (ts) => {
     const d = new Date(ts);

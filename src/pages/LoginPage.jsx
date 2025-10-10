@@ -1,42 +1,46 @@
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../features/auth/AuthContext";
 
 export default function LoginPage() {
-    const { login, signup } = useAuth();
-    const [mode, setMode] = useState("login");
-    const [email, setEmail] = useState("");
-    const [password, setPassword] = useState("");
+    const nav = useNavigate();
+    const { login } = useAuth();
+    const [form, setForm] = useState({ email: "", password: "" });
+    const [busy, setBusy] = useState(false);
     const [err, setErr] = useState("");
-    const [loading, setLoading] = useState(false);
+
+    const onChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
 
     const onSubmit = async (e) => {
         e.preventDefault();
         setErr("");
-        setLoading(true);
+        if (!form.email.trim() || !form.password.trim()) {
+            setErr("이메일과 비밀번호를 입력하세요.");
+            return;
+        }
+        setBusy(true);
         try {
-            if (mode === "login") await login(email, password);
-            else await signup(email, password);
+            await login({ email: form.email.trim(), password: form.password });
+            nav("/app");
         } catch (e) {
-            setErr(e?.data?.message || e?.message || "요청 실패");
+            const msg = (e?.data?.message || e?.message || "로그인에 실패했습니다.").toString();
+            setErr(Array.isArray(msg) ? msg.join("\n") : msg);
         } finally {
-            setLoading(false);
+            setBusy(false);
         }
     };
 
     return (
-        <div style={{ minHeight: "70vh", display: "grid", placeItems: "center" }}>
-            <form className="panel" style={{ width: 360, display: "grid", gap: 12 }} onSubmit={onSubmit}>
-                <h3 style={{ margin: 0 }}>{mode === "login" ? "로그인" : "회원가입"}</h3>
-                <input className="input" type="email" placeholder="이메일" value={email} onChange={(e)=>setEmail(e.target.value)} required />
-                <input className="input" type="password" placeholder="비밀번호" value={password} onChange={(e)=>setPassword(e.target.value)} required />
-                {err && <div className="empty" style={{ color: "var(--danger)" }}>{err}</div>}
-                <button className="btn btn-primary" type="submit" disabled={loading}>
-                    {loading ? "처리 중..." : (mode === "login" ? "로그인" : "가입 후 로그인")}
-                </button>
-                <button type="button" className="btn btn-ghost" onClick={()=>setMode(mode==="login"?"signup":"login")}>
-                    {mode === "login" ? "회원가입으로 전환" : "로그인으로 전환"}
-                </button>
-            </form>
-        </div>
+        <form className="modal" onSubmit={onSubmit} style={{ width: 420, margin: "10vh auto", padding: 16 }}>
+            <div className="modal-head"><h4>로그인</h4></div>
+            <div className="modal-body" style={{ display: "grid", gap: 10 }}>
+                <input className="input" type="email" name="email" placeholder="이메일" value={form.email} onChange={onChange} />
+                <input className="input" type="password" name="password" placeholder="비밀번호" value={form.password} onChange={onChange} />
+                {err && <div style={{ color: "var(--danger)", fontSize: 12, whiteSpace: "pre-line" }}>{err}</div>}
+            </div>
+            <div className="modal-actions" style={{ justifyContent: "flex-end" }}>
+                <button className="btn btn-primary" type="submit" disabled={busy}>{busy ? "로그인 중…" : "로그인"}</button>
+            </div>
+        </form>
     );
 }

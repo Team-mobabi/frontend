@@ -1,19 +1,18 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from "react";
+import { useGit } from "../GitCore/GitContext.jsx";
 
-// 애니메이션 상태를 관리하고 시각적 효과를 트리거하는 훅입니다.
-export const useAnimationEngine = (state, dispatch) => {
+export default function AnimationEngine() {
+    const { state, dispatch } = useGit();
+    const timer = useRef(null);
+
     useEffect(() => {
-        if (state.animationStatus) {
-            // 1. 상태 변화에 따른 애니메이션 시작 (예: Push, Pull)
-            console.log(`Animation started for: ${state.animationStatus}`);
+        if (state.animationMode === "idle") return;
+        clearTimeout(timer.current);
+        timer.current = setTimeout(() => {
+            dispatch({ type: "SET_ANIMATION_END" });
+        }, 900); // CSS keyframes 0.6s + 여유
+        return () => clearTimeout(timer.current);
+    }, [state.animationMode, state.animationTick, dispatch]);
 
-            // 2. 일정 시간 후 애니메이션 상태 초기화 (CSS 트랜지션 완료 시간)
-            const timer = setTimeout(() => {
-                dispatch({ type: 'RESET_ANIMATION' }); // gitReducer에 추가할 액션
-                console.log('Animation finished.');
-            }, 1500);
-
-            return () => clearTimeout(timer);
-        }
-    }, [state.animationStatus, dispatch]);
-};
+    return null; // UI 없음 (상태만 관리)
+}

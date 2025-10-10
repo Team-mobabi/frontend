@@ -1,48 +1,56 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
-import { api } from "../API";
+import { api, getToken, setToken, clearToken } from "../API";
 
-const Ctx = createContext(null);
+const AuthCtx = createContext(null);
 
 export function AuthProvider({ children }) {
     const [user, setUser] = useState(null);
     const [busy, setBusy] = useState(true);
 
-    const hydrate = async () => {
-        try {
-            const me = await api.user.me();
-            setUser(me);
-        } catch {
-            setUser(null);
-        } finally {
-            setBusy(false);
-        }
-    };
-
     useEffect(() => {
-        if (api.auth.getToken()) hydrate();
-        else setBusy(false);
+        (async () => {
+            try {
+                const t = getToken();
+                if (t) {
+                    const me = await api.user.me();
+                    setUser(me);
+                } else {
+                    setUser(null);
+                }
+            } catch {
+                clearToken();
+                setUser(null);
+            } finally {
+                setBusy(false);
+            }
+        })();
     }, []);
 
-    const login = async (email, password) => {
-        await api.auth.signin({ email, password });
-        await hydrate();
+    const refresh = async () => {
+        const me = await api.user.me();
+        setUser(me);
+        return me;
     };
 
-    const signup = async (email, password) => {
-        await api.auth.signup({ email, password });
-        await login(email, password);
+    const login = async ({ email, password }) => {
+        const res = await api.auth.signin({ email, password });
+        const token = res?.token || res?.accessToken || res?.access_token || res?.jwt || res?.id_token;
+        if (!token) throw new Error("로그인 토큰을 받지 못했습니다.");
+        setToken(token);
+        return await refresh(); // 로그인 직후 사용자 정보 갱신
     };
 
-    const logout = async () => {
-        await api.auth.signout();
+    const signout = async () => {
+        try { await api.auth.signout(); } catch {}
+        clearToken();
         setUser(null);
     };
 
     return (
-        <Ctx.Provider value={{ user, busy, login, signup, logout }}>
+        <AuthCtx.Provider value={{ user, busy, setUser, refresh, login, signout }}>
             {children}
-        </Ctx.Provider>
+        </AuthCtx.Provider>
     );
 }
 
-export const useAuth = () => useContext(Ctx);
+export const useAuth = () => useContext(AuthCtx);

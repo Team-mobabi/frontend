@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { api } from "../../features/API";
-import { useGit } from "../../features/GitCore/GitContext";
+import { useGit } from "../GitCore/GitContext.jsx";
 
 function toArray(x){if(!x)return[];return Array.isArray(x)?x:[x]}
 function nameOf(it){if(typeof it==="string")return it;return it?.path||it?.file||it?.name||it?.filename||""}

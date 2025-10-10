@@ -1,5 +1,5 @@
 import React from 'react';
-import { useGit } from '../GitCore/GitContext';
+import { useGit } from '../GitCore/GitContext.jsx';
 import { removeFromStaging } from '../GitCore/gitActions';
 
 export default function StagingSummary({ files }) {

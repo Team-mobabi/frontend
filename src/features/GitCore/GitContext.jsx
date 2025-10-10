@@ -1,53 +1,64 @@
-import React, { createContext, useContext, useMemo, useReducer } from "react";
-import { normalizeRepo, repoIdOf } from "./repoUtils.js";
+import React, { createContext, useContext, useReducer, useEffect } from "react";
 
 const GitContext = createContext(null);
+const LS_KEY = "git_last_repo";
 
-const initialState = {
+const initial = {
     repositories: [],
-    selectedRepoId: null,
+    selectedRepoId: "",
     workingDirectory: [],
     stagingArea: [],
-    commits: [],
+    graphVersion: 0,
+    animationMode: "idle",
+    animationTick: 0,
+    transferSnapshot: null,
+    eventLog: [],
 };
 
 function reducer(state, action) {
     switch (action.type) {
-        case "SET_REPOS": {
-            const raw = Array.isArray(action.payload) ? action.payload : [];
-            const repos = raw.map(normalizeRepo).filter((r) => repoIdOf(r));
-            const keep = state.selectedRepoId && repos.some((r) => repoIdOf(r) === String(state.selectedRepoId));
-            const nextSelected = keep ? String(state.selectedRepoId) : (repos[0]?.id ?? null);
-            return { ...state, repositories: repos, selectedRepoId: nextSelected };
-        }
-        case "SELECT_REPO": {
-            const id = action.payload == null ? null : String(action.payload);
-            return { ...state, selectedRepoId: id, stagingArea: [], commits: [] };
-        }
-        case "SET_WORKING_DIR":
-            return { ...state, workingDirectory: action.payload || [] };
-        case "ADD_SELECTED": {
-            const names = Array.isArray(action.payload) ? action.payload : [];
-            const next = [...new Set([...state.stagingArea, ...names])];
-            return { ...state, stagingArea: next };
-        }
+        case "ADD_REPO":
+            return { ...state, repositories: [...state.repositories, action.payload] };
+        case "SET_REPOS":
+            return { ...state, repositories: action.payload };
+        case "SELECT_REPO":
+            if (action.payload) try { localStorage.setItem(LS_KEY, String(action.payload)); } catch {}
+            return { ...state, selectedRepoId: action.payload, stagingArea: [], workingDirectory: [] };
+        case "ADD_SELECTED":
+            return { ...state, stagingArea: Array.from(new Set([...(state.stagingArea||[]), ...action.payload])) };
         case "REMOVE_FROM_STAGING":
-            return { ...state, stagingArea: state.stagingArea.filter((n) => n !== action.payload) };
+            return { ...state, stagingArea: (state.stagingArea||[]).filter(n => n !== action.payload) };
         case "COMMIT_SUCCESS":
-            return { ...state, stagingArea: [] };
+            return { ...state, stagingArea: [], eventLog: [...state.eventLog, { t: Date.now(), kind: "commit", msg: action.message }] };
+        case "GRAPH_DIRTY":
+            return { ...state, graphVersion: state.graphVersion + 1 };
+        case "SET_TRANSFER":
+            return { ...state, transferSnapshot: action.payload || null };
+        case "SET_ANIMATION_START":
+            return { ...state, animationMode: action.payload, animationTick: state.animationTick + 1 };
+        case "SET_ANIMATION_END":
+            return { ...state, animationMode: "idle", animationTick: state.animationTick + 1 };
+        case "LOG_EVENT":
+            return { ...state, eventLog: [...state.eventLog, { t: Date.now(), ...action.payload }] };
         default:
             return state;
     }
 }
 
 export function GitProvider({ children }) {
-    const [state, dispatch] = useReducer(reducer, initialState);
-    const value = useMemo(() => ({ state, dispatch }), [state]);
-    return <GitContext.Provider value={value}>{children}</GitContext.Provider>;
+    const [state, dispatch] = useReducer(reducer, initial);
+
+    useEffect(() => {
+        // 앱 시작 시 마지막 선택 레포 복원
+        try {
+            const saved = localStorage.getItem(LS_KEY);
+            if (saved) dispatch({ type: "SELECT_REPO", payload: saved });
+        } catch {}
+    }, []);
+
+    return <GitContext.Provider value={{ state, dispatch }}>{children}</GitContext.Provider>;
 }
 
 export function useGit() {
-    const ctx = useContext(GitContext);
-    if (!ctx) throw new Error("useGit must be used within GitProvider");
-    return ctx;
+    return useContext(GitContext);
 }
