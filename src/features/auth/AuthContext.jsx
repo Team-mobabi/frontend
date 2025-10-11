@@ -44,6 +44,7 @@ export function AuthProvider({ children }) {
         try { await api.auth.signout(); } catch {}
         clearToken();
         setUser(null);
+        window.location.assign("/login");
     };
 
     return (

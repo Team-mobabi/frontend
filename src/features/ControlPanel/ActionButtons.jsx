@@ -1,22 +1,19 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
-import { useGit } from "../../features/GitCore/GitContext";
-import { api } from "../../features/API";
+import React, {useEffect, useMemo, useRef, useState} from "react";
+import {useGit} from "../../features/GitCore/GitContext";
+import {api} from "../../features/API";
 import AddModal from "./AddModal";
 import StagingSummary from "./StagingSummary";
 import RemoteConnectModal from "./RemoteConnectModal";
-import { getRemoteMem, setRemoteMem } from "../../features/GitCore/remoteMemory";
+import {getRemoteMem, setRemoteMem} from "../../features/GitCore/remoteMemory";
 
-const STEP_LABEL = { 1: "원격에서 받아오기", 2: "파일 담기", 3: "메시지 쓰고 저장", 4: "원격으로 올리기" };
+const STEP_LABEL = {1: "원격에서 받아오기", 2: "파일 담기", 3: "메시지 쓰고 저장", 4: "원격으로 올리기"};
 
-/** 브랜치 입력 어떤 형태든 문자열 이름 배열로 정규화 */
+// ... (파일 상단에 있던 normalizeBranchList, fileListOf, findMissingCommits, summarizeFiles 함수들은 그대로 유지) ...
 function normalizeBranchList(input) {
     if (!input) return ["main"];
-
-    // 서버가 { branches: [...] } 로 주는 케이스
     if (!Array.isArray(input) && Array.isArray(input.branches)) {
         return normalizeBranchList(input.branches);
     }
-
     if (Array.isArray(input)) {
         const names = input
             .map((b) =>
@@ -27,13 +24,10 @@ function normalizeBranchList(input) {
             .filter(Boolean);
         return names.length ? names : ["main"];
     }
-
-    // 객체(키가 브랜치명) 케이스
     const keys = Object.keys(input || {});
     return keys.length ? keys : ["main"];
 }
 
-/** 커밋에서 파일 리스트 추출 */
 function fileListOf(c) {
     const a = c?.files || c?.changed || c?.paths || [];
     if (Array.isArray(a) && a.length) return a.map(String);
@@ -41,7 +35,6 @@ function fileListOf(c) {
     return fromObj;
 }
 
-/** 로컬/원격 그래프 비교로 빠진 커밋 계산 */
 function findMissingCommits(graph, branch, direction) {
     const local = graph?.local ?? graph?.workspace ?? graph?.localRepo ?? {};
     const remote = graph?.remote ?? graph?.origin ?? graph?.remoteRepo ?? {};
@@ -61,14 +54,17 @@ function findMissingCommits(graph, branch, direction) {
         return idx >= 0 ? rb.slice(idx + 1) : rb;
     }
 }
+
 function summarizeFiles(commits) {
     const set = new Set();
     commits.forEach((c) => fileListOf(c).forEach((f) => set.add(String(f))));
     return Array.from(set);
 }
 
+
 export default function ActionButtons() {
-    const { state, dispatch } = useGit();
+    // ... (기존 useState, useEffect 등 hook 설정은 그대로 유지) ...
+    const {state, dispatch} = useGit();
     const selectedRepoId = state.selectedRepoId;
     const safeRepoId = useMemo(
         () => (selectedRepoId == null ? "" : String(selectedRepoId).trim()),
@@ -94,7 +90,6 @@ export default function ActionButtons() {
     const [selPull, setSelPull] = useState("main");
     const [selPush, setSelPush] = useState("main");
 
-    // 원격이 비어있으면 true
     const [needsInitialPush, setNeedsInitialPush] = useState(false);
 
     const setToastAuto = (t, ms = 1600) => {
@@ -110,12 +105,12 @@ export default function ActionButtons() {
             const names = normalizeBranchList(list?.branches ?? list);
             setBranches(names.length ? names : ["main"]);
 
-            // selPull / selPush도 반드시 문자열로 유지
             const nextPull = names.includes(selPull) ? selPull : (names[0] || "main");
             const nextPush = names.includes(selPush) ? selPush : (names[0] || "main");
             setSelPull(nextPull);
             setSelPush(nextPush);
-        } catch {}
+        } catch {
+        }
     };
 
     useEffect(() => {
@@ -129,7 +124,6 @@ export default function ActionButtons() {
         setPushOpen(false);
     }, [selectedRepoId]);
 
-    // 원격 상태 체크: 비어있으면 초기 업로드 유도
     useEffect(() => {
         if (!hasRepo) return;
         (async () => {
@@ -155,8 +149,6 @@ export default function ActionButtons() {
         const m = (e?.data?.message || e?.message || fb || "오류가 발생했어요.").toString();
         setToast(`${m}${status}${where}${raw}`);
         setTimeout(() => setToast(""), 2600);
-        // 디버깅용
-        // eslint-disable-next-line no-console
         console.error("[ActionButtons Error]", {
             msg: m,
             status: e?.status,
@@ -180,50 +172,48 @@ export default function ActionButtons() {
         fn();
     };
 
+    // ... (기존 switchOrCreateBranch, ensureServerRemote, ensureRemoteThenBranch, computeTransfer, handlePull 함수들은 그대로 유지) ...
     const switchOrCreateBranch = async (rid, branchName) => {
         const br = String(branchName || "main").trim();
         if (!br) throw new Error("브랜치 이름이 비어있습니다.");
         try {
             const res = await api.branches.switch(rid, br);
-            return { created: false, switched: true, message: res?.message || "" };
+            return {created: false, switched: true, message: res?.message || ""};
         } catch (e) {
             if (e?.status === 404) {
                 await api.branches.create(rid, br);
                 const res2 = await api.branches.switch(rid, br);
-                return { created: true, switched: true, message: res2?.message || "" };
+                return {created: true, switched: true, message: res2?.message || ""};
             }
             throw e;
         }
     };
-
-    /** 서버 내부 원격 우선 연결 (connectRemoteLocal) → 실패 시 기존 remoteMem/모달 */
     const ensureServerRemote = async () => {
         const rid = repoIdRef.current;
         if (!rid) throw new Error("레포지토리를 먼저 선택해주세요.");
         try {
-            await api.repos.connectRemoteLocal(rid, { name: "origin" });
+            await api.repos.connectRemoteLocal(rid, {name: "origin"});
             return true;
         } catch (e) {
             const mem = getRemoteMem(rid);
             if (mem && mem.url && mem.name) {
                 try {
-                    await api.repos.connectRemote(rid, { url: mem.url, name: mem.name });
+                    await api.repos.connectRemote(rid, {url: mem.url, name: mem.name});
                     return true;
-                } catch {}
+                } catch {
+                }
             }
             setRemoteModalOpen(true);
             setToastAuto("원격 저장소 연결 창을 열었어요.");
             throw new Error("원격 저장소가 연결되지 않았습니다.");
         }
     };
-
     const ensureRemoteThenBranch = async (branchName) => {
         await ensureServerRemote();
         const result = await switchOrCreateBranch(repoIdRef.current, branchName || "main");
         if (result?.message) setToastAuto(result.message, 1200);
         return result?.switched === true;
     };
-
     const computeTransfer = async (rid, branch, type) => {
         const g = await api.repos.graph(rid);
         const missing = findMissingCommits(g, branch, type);
@@ -235,9 +225,8 @@ export default function ActionButtons() {
             }))
             .filter((c) => c.hash);
         const files = summarizeFiles(missing);
-        return { type, branch, commits, files };
+        return {type, branch, commits, files};
     };
-
     const handlePull = async (branchName) => {
         if (!hasRepo) return;
         if (needsInitialPush) {
@@ -254,11 +243,11 @@ export default function ActionButtons() {
             try {
                 const transfer = await computeTransfer(rid, br, "pull");
                 if (transfer.commits.length || transfer.files.length) {
-                    dispatch({ type: "SET_TRANSFER", payload: transfer });
-                    dispatch({ type: "SET_ANIMATION", payload: "pull" });
+                    dispatch({type: "SET_TRANSFER", payload: transfer});
+                    dispatch({type: "SET_ANIMATION", payload: "pull"});
                 }
                 await api.repos.pull(rid);
-                dispatch({ type: "GRAPH_DIRTY" });
+                dispatch({type: "GRAPH_DIRTY"});
                 setStep(2);
             } catch (e) {
                 if (e?.status === 409) {
@@ -268,7 +257,7 @@ export default function ActionButtons() {
             }
         } catch (e) {
             if (e?.message === "원격 저장소가 연결되지 않았습니다.")
-                setPendingAction({ type: "pull", branch: branchName || "main" });
+                setPendingAction({type: "pull", branch: branchName || "main"});
             else fail(e, "받아오기에 실패했어요.");
         } finally {
             setBusy(false);
@@ -276,44 +265,44 @@ export default function ActionButtons() {
         }
     };
 
-    const handleAddConfirm = async (names) => {
+    // ▼▼▼ 수정된 부분 ▼▼▼
+    const handleAddConfirm = async (selection) => {
         setOpenAdd(false);
         const rid = repoIdRef.current;
-        if (!rid) return;
-
-        let list = Array.isArray(names) ? names.filter(Boolean).map(String) : [];
-        if (list.length === 0) {
-            try {
-                const st = await api.repos.status(rid);
-                const pools = [st?.staged, st?.added, st?.created, st?.changes?.staged, st?.index, st?.cached].filter(Boolean);
-                const flat = [];
-                const toArray = (x) => (Array.isArray(x) ? x : x ? [x] : []);
-                const nameOf = (it) =>
-                    typeof it === "string" ? it : it?.path || it?.file || it?.name || it?.filename || "";
-                for (const p of pools) toArray(p).forEach((x) => { const n = nameOf(x); if (n) flat.push(n); });
-                list = Array.from(new Set(flat));
-            } catch {}
-        }
-        if (list.length === 0) {
-            setToastAuto("담을 파일이 확인되지 않았어요.", 1200);
+        if (!rid || !selection || selection.length === 0) {
+            setToastAuto("담을 파일이 선택되지 않았어요.", 1200);
             return;
         }
 
         setBusy(true);
         try {
-            try {
-                await api.repos.add(rid, list);
-            } catch {}
-            dispatch({ type: "ADD_SELECTED", payload: list });
+            // selection의 첫번째 요소가 File 객체인지 확인하여 분기
+            const isFileUpload = selection[0] instanceof File;
+            let addedNames = [];
+
+            if (isFileUpload) {
+                // 실제 파일 객체 배열(File[])인 경우, upload API 사용
+                await api.repos.upload(rid, selection);
+                addedNames = selection.map(f => f.name);
+            } else {
+                // 파일 이름 배열(string[])인 경우, 기존 add API 사용
+                await api.repos.add(rid, selection);
+                addedNames = selection;
+            }
+
+            dispatch({type: "ADD_SELECTED", payload: addedNames});
             setStep(3);
-            setToastAuto(`${list.length}개 파일을 담았어요.`, 1200);
+            setToastAuto(`${addedNames.length}개 파일을 담았어요.`, 1200);
+
         } catch (e) {
             fail(e, "파일 담기에 실패했어요.");
         } finally {
             setBusy(false);
         }
     };
+    // ▲▲▲ 수정된 부분 ▲▲▲
 
+    // ... (기존 handleCommit, quickInitialPush, handlePush 함수 및 return JSX 부분은 그대로 유지) ...
     const handleCommit = async () => {
         const text = msg.trim();
         if (!hasRepo || !text) return;
@@ -325,8 +314,8 @@ export default function ActionButtons() {
         try {
             const rid = repoIdRef.current;
             await api.repos.commit(rid, text);
-            dispatch({ type: "COMMIT_SUCCESS", message: text });
-            dispatch({ type: "GRAPH_DIRTY" });
+            dispatch({type: "COMMIT_SUCCESS", message: text});
+            dispatch({type: "GRAPH_DIRTY"});
             setMsg("");
             setStep(4);
         } catch (e) {
@@ -335,8 +324,6 @@ export default function ActionButtons() {
             setBusy(false);
         }
     };
-
-    /** 서버 업로드-우선 초기 푸시 */
     const quickInitialPush = async () => {
         if (!hasRepo) return;
         setBusy(true);
@@ -344,42 +331,38 @@ export default function ActionButtons() {
             const rid = repoIdRef.current;
             const br = selPush || "main";
 
-            // 0) 서버 내부 원격 + 브랜치 보장
             await ensureRemoteThenBranch(br);
             await refreshBranches();
 
-            // 1) README 생성 후 멀티파트 업로드(files)
             const readmeContent = `# 초기 업로드
 이 레포는 서버 업로드 API를 통해 생성되었습니다.
 - 업로드 시각: ${new Date().toISOString()}
 `;
-            const blob = new Blob([readmeContent], { type: "text/plain" });
-            const file = new File([blob], "README.md", { type: "text/plain" });
+            const blob = new Blob([readmeContent], {type: "text/plain"});
+            const file = new File([blob], "README.md", {type: "text/plain"});
 
             try {
-                const up = await api.repos.upload(rid, [file]); // POST /repos/:id/add (FormData "files")
+                const up = await api.repos.upload(rid, [file]);
                 if (!up?.saved?.length) {
-                    try { await api.repos.add(rid, ["README.md"]); } catch {}
+                    try {
+                        await api.repos.add(rid, ["README.md"]);
+                    } catch {
+                    }
                 }
             } catch (e) {
                 const msg = (e?.data?.message || e?.message || "").toString();
                 if (/already exists/i.test(msg) || e?.status === 409) {
-                    // 이미 있으면 계속 진행
-                    // eslint-disable-next-line no-console
                     console.info("[init upload] README 이미 존재. 계속 진행합니다.");
                 } else {
-                    // eslint-disable-next-line no-console
                     console.warn("[init upload README failed] 계속 진행:", e);
                 }
             }
 
-            // 2) 커밋
             const message = (msg || "").trim() || "Initial commit";
             await api.repos.commit(rid, message);
-            dispatch({ type: "COMMIT_SUCCESS", message });
-            dispatch({ type: "GRAPH_DIRTY" });
+            dispatch({type: "COMMIT_SUCCESS", message});
+            dispatch({type: "GRAPH_DIRTY"});
 
-            // 3) 푸시
             await api.repos.push(rid);
 
             setNeedsInitialPush(false);
@@ -391,7 +374,6 @@ export default function ActionButtons() {
             setBusy(false);
         }
     };
-
     const handlePush = async (branchName) => {
         if (!hasRepo) return;
         setBusy(true);
@@ -404,12 +386,12 @@ export default function ActionButtons() {
 
             const transfer = await computeTransfer(rid, br, "push");
             if (transfer.commits.length || transfer.files.length) {
-                dispatch({ type: "SET_TRANSFER", payload: transfer });
-                dispatch({ type: "SET_ANIMATION", payload: "push" });
+                dispatch({type: "SET_TRANSFER", payload: transfer});
+                dispatch({type: "SET_ANIMATION", payload: "push"});
             }
 
             await api.repos.push(rid);
-            dispatch({ type: "GRAPH_DIRTY" });
+            dispatch({type: "GRAPH_DIRTY"});
             setStep(1);
             setToastAuto("원격으로 올렸어요.", 1200);
         } catch (e) {
@@ -419,6 +401,7 @@ export default function ActionButtons() {
             setPushOpen(false);
         }
     };
+
 
     const lock1 = step !== 1 || !hasRepo;
     const lock2 = step !== 2 || !hasRepo;
@@ -431,7 +414,9 @@ export default function ActionButtons() {
                 <h3>동작</h3>
                 <p className="panel-sub">① 원격에서 받아오기 → ② 파일 담기 → ③ 메시지 쓰고 저장 → ④ 원격으로 올리기</p>
 
-                {step === 1 && needsInitialPush && (
+                {/* ▼▼▼ 수정된 부분 ▼▼▼ */}
+                {/* step이 1이고, 초기 업로드가 필요한 경우에만 초기 업로드 UI를 보여줍니다. */}
+                {step === 1 && needsInitialPush ? (
                     <div
                         className="notice"
                         style={{
@@ -442,10 +427,10 @@ export default function ActionButtons() {
                             border: "1px solid #fed7aa",
                         }}
                     >
-                        <div style={{ fontSize: 14, lineHeight: 1.4 }}>
+                        <div style={{fontSize: 14, lineHeight: 1.4}}>
                             🔰 원격 저장소가 비어 있어요. <b>처음 한 번은 ‘올리기(초기 업로드)’부터</b> 진행해야 합니다.
                         </div>
-                        <div style={{ marginTop: 8, display: "flex", gap: 8, flexWrap: "wrap" }}>
+                        <div style={{marginTop: 8, display: "flex", gap: 8, flexWrap: "wrap"}}>
                             <button className="btn btn-success" disabled={busy || !hasRepo} onClick={quickInitialPush}>
                                 초기 업로드 먼저 하기
                             </button>
@@ -454,116 +439,103 @@ export default function ActionButtons() {
                             </button>
                         </div>
                     </div>
-                )}
+                ) : (
+                    /* 그렇지 않은 모든 경우에는 일반 컨트롤 버튼들을 보여줍니다. */
+                    <div className="controls">
+                        <div className="combo-wrap">
+                            <button
+                                className={`btn btn-primary btn-combo ${lock1 ? "btn-locked" : ""}`}
+                                onClick={() => guard(1, () => setPullOpen(!pullOpen))}
+                            >
+                                <span className="combo-text">{selPull}</span>
+                                <span className="split-suffix">에서 받아오기</span>
+                            </button>
+                            {pullOpen && step === 1 && (
+                                <div className="combo-menu">
+                                    {branches.map((b) => {
+                                        const name = typeof b === "string" ? b : (b?.name || "");
+                                        if (!name) return null;
+                                        return (
+                                            <button
+                                                key={name}
+                                                className={`combo-item ${name === selPull ? "active" : ""}`}
+                                                onClick={() => {
+                                                    setSelPull(name);
+                                                    handlePull(name);
+                                                }}
+                                            >
+                                                {name}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </div>
 
-                <div className="controls">
-                    <div className="combo-wrap">
                         <button
-                            className={`btn btn-primary btn-combo ${(lock1 || needsInitialPush) ? "btn-locked" : ""}`}
-                            onClick={() =>
-                                guard(1, () => {
-                                    if (needsInitialPush) {
-                                        setToastAuto("원격이 비어 있어요. ‘초기 업로드 먼저 하기’를 눌러주세요.");
-                                        return;
-                                    }
-                                    setPullOpen(!pullOpen);
-                                })
-                            }
+                            className={`btn ${lock2 ? "btn-locked" : ""}`}
+                            onClick={() => guard(2, () => setOpenAdd(true))}
                         >
-                            <span className="combo-text">{selPull}</span>
-                            <span className="split-suffix">에서 받아오기</span>
+                            파일 담기
                         </button>
-                        {pullOpen && step === 1 && !needsInitialPush && (
-                            <div className="combo-menu">
-                                {branches.map((b) => {
-                                    const name =
-                                        typeof b === "string" ? b : (b?.name || b?.branch || b?.ref || b?.id || "");
-                                    if (!name) return null;
-                                    return (
-                                        <button
-                                            key={name}
-                                            className={`combo-item ${name === selPull ? "active" : ""}`}
-                                            onClick={() => {
-                                                setSelPull(name);
-                                                handlePull(name);
-                                            }}
-                                        >
-                                            {name}
-                                        </button>
-                                    );
-                                })}
-                            </div>
-                        )}
-                    </div>
 
-                    <button
-                        className={`btn ${lock2 ? "btn-locked" : ""}`}
-                        onClick={() => guard(2, () => setOpenAdd(true))}
-                    >
-                        파일 담기
-                    </button>
-
-                    <div style={{ position: "relative" }}>
-                        <input
-                            className="input"
-                            placeholder="커밋 메시지"
-                            value={msg}
-                            onChange={(e) => setMsg(e.target.value)}
-                            style={{ flex: 1, minWidth: 220, maxWidth: 320 }}
-                            readOnly={lock3}
-                        />
-                        {lock3 && (
-                            <div
-                                onClick={() => guard(3, () => {})}
-                                style={{ position: "absolute", inset: 0, cursor: "not-allowed", borderRadius: 10 }}
+                        <div style={{position: "relative"}}>
+                            <input
+                                className="input"
+                                placeholder="커밋 메시지"
+                                value={msg}
+                                onChange={(e) => setMsg(e.target.value)}
+                                style={{flex: 1, minWidth: 220, maxWidth: 320}}
+                                readOnly={lock3}
                             />
-                        )}
-                    </div>
+                            {lock3 && <div onClick={() => guard(3, () => {
+                            })} style={{position: "absolute", inset: 0, cursor: "not-allowed", borderRadius: 10}}/>}
+                        </div>
 
-                    <button
-                        className={`btn btn-success ${
-                            lock3 || state.stagingArea.length === 0 || !msg.trim() ? "btn-locked" : ""
-                        }`}
-                        onClick={() => guard(3, handleCommit)}
-                    >
-                        버전 저장
-                    </button>
-
-                    <div className="combo-wrap">
                         <button
-                            className={`btn btn-primary btn-combo ${lock4 ? "btn-locked" : ""}`}
-                            onClick={() => guard(4, () => setPushOpen(!pushOpen))}
+                            className={`btn btn-success ${lock3 || state.stagingArea.length === 0 || !msg.trim() ? "btn-locked" : ""}`}
+                            onClick={() => guard(3, handleCommit)}
                         >
-                            <span className="combo-text">{selPush}</span>
-                            <span className="split-suffix">으로 올리기</span>
+                            버전 저장
                         </button>
-                        {pushOpen && step === 4 && (
-                            <div className="combo-menu">
-                                {branches.map((b) => {
-                                    const name =
-                                        typeof b === "string" ? b : (b?.name || b?.branch || b?.ref || b?.id || "");
-                                    if (!name) return null;
-                                    return (
-                                        <button
-                                            key={name}
-                                            className={`combo-item ${name === selPush ? "active" : ""}`}
-                                            onClick={() => {
-                                                setSelPush(name);
-                                                handlePush(name);
-                                            }}
-                                        >
-                                            {name}
-                                        </button>
-                                    );
-                                })}
-                            </div>
-                        )}
+
+                        <div className="combo-wrap">
+                            <button
+                                className={`btn btn-primary btn-combo ${lock4 ? "btn-locked" : ""}`}
+                                onClick={() => guard(4, () => setPushOpen(!pushOpen))}
+                            >
+                                <span className="combo-text">{selPush}</span>
+                                <span className="split-suffix">으로 올리기</span>
+                            </button>
+                            {pushOpen && step === 4 && (
+                                <div className="combo-menu">
+                                    {branches.map((b) => {
+                                        const name = typeof b === "string" ? b : (b?.name || "");
+                                        if (!name) return null;
+                                        return (
+                                            <button
+                                                key={name}
+                                                className={`combo-item ${name === selPush ? "active" : ""}`}
+                                                onClick={() => {
+                                                    setSelPush(name);
+                                                    handlePush(name);
+                                                }}
+                                            >
+                                                {name}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </div>
                     </div>
-                </div>
+                )}
+                {/* ▲▲▲ 수정된 부분 ▲▲▲ */}
+
 
                 <StagingSummary
                     files={state.stagingArea}
-                    onRemove={(name) => dispatch({ type: "REMOVE_FROM_STAGING", payload: name })}
+                    onRemove={(name) => dispatch({type: "REMOVE_FROM_STAGING", payload: name})}
                 />
             </div>
 
