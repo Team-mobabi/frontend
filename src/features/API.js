@@ -59,6 +59,7 @@ export const api = {
         list: (params) => request("GET", `/repos${qs(params)}`),
         delete: (id) => request("DELETE", `/repos/${id}`),
         connectRemote: (id, payload) => request("POST", `/repos/${id}/remote`, payload),
+        connectRemoteLocal: (id, payload) => request("POST", `/repos/${id}/remote-local`, payload),
         status: (id) => request("GET", `/repos/${id}/status`),
         add: (id, files) => request("POST", `/repos/${id}/add`, { files }),
         commit: (id, message) => request("POST", `/repos/${id}/commit`, { message }),

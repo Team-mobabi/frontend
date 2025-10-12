@@ -8,30 +8,28 @@ export default function Sidebar() {
     const { state, dispatch } = useGit();
     const repos = state.repositories || [];
     const activeId = state.selectedRepoId;
-    const [openNew, setOpenNew] = useState(false);
+    const [createModalOpen, setCreateModalOpen] = useState(false);
 
     const handleDeleteRepo = async (e, repo) => {
         e.stopPropagation();
-
         const rid = repoIdOf(repo);
         if (window.confirm(`'${repo.name}' 레포지토리를 정말로 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다.`)) {
             try {
                 await api.repos.delete(rid);
-
-                // ▼▼▼ [수정] UI를 즉시 업데이트하도록 dispatch 액션 변경 ▼▼▼
                 dispatch({ type: "REMOVE_REPO", payload: rid });
-                // ▲▲▲ [수정] UI를 즉시 업데이트하도록 dispatch 액션 변경 ▲▲▲
-
             } catch (error) {
                 alert(`삭제 실패: ${error.message}`);
             }
         }
     };
 
+    const handleRepoCreated = () => {
+        dispatch({ type: "GRAPH_DIRTY" });
+    };
+
     return (
         <div className="sidebar">
             <h3>내 레포지토리</h3>
-
             <div className="repo-list">
                 {(repos.length ? repos : []).map((r) => {
                     const rid = repoIdOf(r);
@@ -59,11 +57,15 @@ export default function Sidebar() {
                 })}
             </div>
 
-            <button className="btn btn-primary" style={{ marginTop: 8 }} onClick={() => setOpenNew(true)}>
+            <button className="btn btn-primary" style={{ marginTop: 8 }} onClick={() => setCreateModalOpen(true)}>
                 새 레포 만들기
             </button>
 
-            <CreateRepoModal open={openNew} onClose={() => setOpenNew(false)} dispatch={dispatch} />
+            <CreateRepoModal
+                open={createModalOpen}
+                onClose={() => setCreateModalOpen(false)}
+                onRepoCreated={handleRepoCreated}
+            />
         </div>
     );
 }
