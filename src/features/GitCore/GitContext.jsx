@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useReducer, useEffect } from "react";
+import {repoIdOf} from "./gitUtils.js";
 
 const GitContext = createContext(null);
 const LS_KEY = "git_last_repo";
@@ -40,6 +41,12 @@ function reducer(state, action) {
             return { ...state, animationMode: "idle", animationTick: state.animationTick + 1 };
         case "LOG_EVENT":
             return { ...state, eventLog: [...state.eventLog, { t: Date.now(), ...action.payload }] };
+        case "REMOVE_REPO":
+            return {
+                ...state,
+                repositories: state.repositories.filter(repo => repoIdOf(repo) !== action.payload),
+                selectedRepoId: state.selectedRepoId === action.payload ? null : state.selectedRepoId,
+            };
         default:
             return state;
     }

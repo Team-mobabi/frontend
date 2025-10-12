@@ -13,7 +13,6 @@ export default function StagingSummary({ files }) {
         <div className="staging-panel">
             <div className="staging-head">
                 <span className="staging-title">담은 파일</span>
-                <span className="staging-count">{files.length}개</span>
             </div>
             {files.length === 0 ? (
                 <div className="staging-empty">아직 담은 파일이 없어요</div>

@@ -1,18 +1,20 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useGit } from "../GitCore/GitContext.jsx";
 import { api } from "../API";
 import CommitNode from "./CommitNode";
 import BranchLine from "./BranchLine";
 import AnimationEngine from "./AnimationEngine";
+import StagingArea from "./StagingArea";
+import MergeBranchModal from "../../components/Modal/MergeBranchModal";
 
-const Y = 70;
-const X = 150;
+const Y = 85;
+const X = 180;
 
 function normGraph(raw) {
     if (!raw) return { branches: {} };
     if (raw.branches && typeof raw.branches === "object") return { branches: raw.branches };
-    const arr = raw.commits || raw.history || raw.log || [];
-    const name = raw.currentBranch || raw.head || raw.branch || "main";
+    const arr = raw.commits || [];
+    const name = raw.currentBranch || "main";
     return { branches: { [name]: Array.isArray(arr) ? arr : [] } };
 }
 
@@ -23,15 +25,9 @@ function calcPositions(repoState) {
     Object.entries(branchMap).forEach(([branchName, commits]) => {
         let cy = y;
         (commits || []).forEach((c, i) => {
-            const h = c.hash || c.id || c.sha || c.oid || `tmp-${branchName}-${i}`;
+            const h = c.hash || `tmp-${branchName}-${i}`;
             if (!commitPositions[h]) {
-                commitPositions[h] = {
-                    x,
-                    y: cy,
-                    branch: branchName,
-                    message: c.message || "",
-                    files: c.files || [],
-                };
+                commitPositions[h] = { x, y: cy, branch: branchName, message: c.message || "", files: c.files || [], parents: c.parents || [] };
                 cy += Y;
             }
         });
@@ -40,363 +36,174 @@ function calcPositions(repoState) {
     return commitPositions;
 }
 
-function linesFrom(pos) {
-    const by = {};
-    for (const [, v] of Object.entries(pos)) {
-        const b = v.branch || "main";
-        (by[b] ||= { points: [] }).points.push({ x: v.x, y: v.y });
-    }
-    Object.values(by).forEach(b => b.points.sort((a, b) => a.y - b.y));
-    return by;
+function calcLineSegments(positions) {
+    const segments = {};
+    const colors = ['#4B5AE4', '#22c55e', '#f59e0b', '#ef4444', '#6366f1', '#8b5cf6'];
+    let colorIndex = 0;
+
+    const branchColors = {};
+    Object.values(positions).forEach(node => {
+        if (!branchColors[node.branch]) {
+            branchColors[node.branch] = colors[colorIndex % colors.length];
+            colorIndex++;
+        }
+    });
+
+    Object.entries(positions).forEach(([childHash, childNode]) => {
+        if (childNode.parents) {
+            childNode.parents.forEach(parentHash => {
+                const parentNode = positions[parentHash];
+                if (parentNode) {
+                    const key = `line-${parentHash}-${childHash}`;
+                    segments[key] = {
+                        points: [parentNode, childNode],
+                        color: branchColors[childNode.branch] || '#e5e8f0'
+                    };
+                }
+            });
+        }
+    });
+    return segments;
 }
 
-// 임시 노드(transferSnapshot) → 로컬/원격에 가짜로 꽂아 미니 그래프 구성
-function buildTempGraph(transfer, side) {
-    if (!transfer) return { branches: {} };
-    const b = transfer.branch || "main";
-    const base = (transfer.commits || []).map((c, i) => ({
-        hash: c.hash || `temp-${side}-${i}`,
-        message: c.message || (side === "local" ? "Staged change" : "Remote update"),
-        files: c.files || [],
-    }));
-    // push 전: local에만 임시 노드, pull 전: remote에만 임시 노드
-    if (transfer.type === "push" && side === "local") return { branches: { [b]: base } };
-    if (transfer.type === "pull" && side === "remote") return { branches: { [b]: base } };
-    return { branches: {} };
+function calcBranchLabels(positions) {
+    const labels = {};
+    const colors = ['#4B5AE4', '#22c55e', '#f59e0b', '#ef4444', '#6366f1', '#8b5cf6'];
+    let colorIndex = 0;
+
+    const branchNames = [...new Set(Object.values(positions).map(p => p.branch))];
+    branchNames.forEach(branchName => {
+        const color = colors[colorIndex % colors.length];
+        colorIndex++;
+        const nodesInBranch = Object.values(positions).filter(p => p.branch === branchName);
+        if (nodesInBranch.length > 0) {
+            nodesInBranch.sort((a,b) => a.y - b.y);
+            labels[branchName] = { point: nodesInBranch[0], color: color };
+        }
+    });
+    return labels;
 }
 
 export default function RepositoryView() {
-    const { state } = useGit();
-    const repoId = state?.selectedRepoId ? String(state.selectedRepoId) : "";
+    const { state, dispatch } = useGit();
+    const repoId = state?.selectedRepoId;
     const [graph, setGraph] = useState({ local: null, remote: null });
-    const [loading, setLoading] = useState(false);
-    const [err, setErr] = useState("");
-
-    // tooltip 상태
     const [tip, setTip] = useState({ show: false, x: 0, y: 0, lines: [] });
-    const stageRef = useRef(null);
+    const [showStaging, setShowStaging] = useState(false);
+    const [mergeModalState, setMergeModalState] = useState({ open: false, sourceBranch: null });
+    const [simplified, setSimplified] = useState(false);
 
     useEffect(() => {
-        if (!repoId) { setGraph({ local: null, remote: null }); setErr(""); return; }
-        let on = true;
-        setLoading(true); setErr("");
-        (async () => {
-            try {
-                const g = await api.repos.graph(repoId);
-                if (!on) return;
-                setGraph({
-                    local: normGraph(g?.local ?? g?.workspace ?? g?.localRepo ?? null),
-                    remote: normGraph(g?.remote ?? g?.origin ?? g?.remoteRepo ?? null),
-                });
-            } catch (e) {
-                if (!on) return;
-                setErr(e?.message || "그래프를 불러오지 못했습니다.");
-                setGraph({ local: null, remote: null });
-            } finally {
-                if (on) setLoading(false);
-            }
-        })();
-        return () => { on = false; };
-    }, [repoId, state.graphVersion, state.animationTick]);
+        if (!repoId) { setGraph({ local: null, remote: null }); return; }
+        api.repos.graph(repoId, { simplified: simplified ? 'true' : undefined })
+            .then(g => setGraph({ local: normGraph(g?.local), remote: normGraph(g?.remote) }))
+            .catch(() => setGraph({ local: null, remote: null }));
+    }, [repoId, state.graphVersion, simplified]);
 
-    // 실제 그래프 + 임시 그래프 합성
-    const localMerged = useMemo(() => {
-        const base = graph.local || { branches: {} };
-        const temp = buildTempGraph(state.transferSnapshot, "local");
-        return { branches: { ...base.branches, ...temp.branches } };
-    }, [graph.local, state.transferSnapshot]);
+    useEffect(() => {
+        if (state.animationMode === 'add') setShowStaging(true);
+        else if (state.animationMode === 'commit') setTimeout(() => setShowStaging(false), 600);
+        else if (state.animationMode === 'idle' && state.stagingArea.length === 0) setShowStaging(false);
+    }, [state.animationMode, state.stagingArea.length]);
 
-    const remoteMerged = useMemo(() => {
-        const base = graph.remote || { branches: {} };
-        const temp = buildTempGraph(state.transferSnapshot, "remote");
-        return { branches: { ...base.branches, ...temp.branches } };
-    }, [graph.remote, state.transferSnapshot]);
+    const localPos = useMemo(() => calcPositions(graph.local), [graph.local]);
+    const remotePos = useMemo(() => calcPositions(graph.remote), [graph.remote]);
 
-    const localPos = useMemo(() => calcPositions(localMerged), [localMerged]);
-    const remotePos = useMemo(() => calcPositions(remoteMerged), [remoteMerged]);
-    const localBranches = useMemo(() => linesFrom(localPos), [localPos]);
-    const remoteBranches = useMemo(() => linesFrom(remotePos), [remotePos]);
+    const localLineSegments = useMemo(() => calcLineSegments(localPos), [localPos]);
+    const remoteLineSegments = useMemo(() => calcLineSegments(remotePos), [remotePos]);
+    const localBranchLabels = useMemo(() => calcBranchLabels(localPos), [localPos]);
+    const remoteBranchLabels = useMemo(() => calcBranchLabels(remotePos), [remotePos]);
 
-    const emptyLocal = Object.keys(localPos).length === 0;
-    const emptyRemote = Object.keys(remotePos).length === 0;
-
-    const animClass =
-        state.animationMode === "push"
-            ? "moving push"
-            : state.animationMode === "pull"
-                ? "moving pull"
-                : "";
-
-    // 브랜치 라벨 위치: 각 브랜치의 첫 포인트 x, 최상단 y 기준으로 라벨 표시
-    const branchLabelsLocal = useMemo(() => {
-        const labels = [];
-        for (const [name, b] of Object.entries(localBranches)) {
-            if (!b.points.length) continue;
-            const x = b.points[0].x;
-            const yTop = Math.min(...b.points.map(p => p.y)) - 32;
-            labels.push({ name, x, y: yTop });
+    const handleOpenMergeModal = (sourceBranch) => setMergeModalState({ open: true, sourceBranch });
+    const handleMergeConfirm = async (targetBranch) => {
+        const { sourceBranch } = mergeModalState;
+        setMergeModalState({ open: false, sourceBranch: null });
+        if (!sourceBranch || !targetBranch) return;
+        try {
+            await api.repos.merge(repoId, { sourceBranch, targetBranch });
+            dispatch({ type: "GRAPH_DIRTY" });
+        } catch (e) {
+            alert(`병합 실패: ${e.message}`);
         }
-        return labels;
-    }, [localBranches]);
-
-    const branchLabelsRemote = useMemo(() => {
-        const labels = [];
-        for (const [name, b] of Object.entries(remoteBranches)) {
-            if (!b.points.length) continue;
-            const x = b.points[0].x;
-            const yTop = Math.min(...b.points.map(p => p.y)) - 32;
-            labels.push({ name, x, y: yTop });
-        }
-        return labels;
-    }, [remoteBranches]);
-
-    // 툴팁 헬퍼
-    const showTip = (evt, lines) => {
-        const stage = stageRef.current;
-        let offsetX = 0, offsetY = 0;
-        if (stage) {
-            const r = stage.getBoundingClientRect();
-            offsetX = r.left + window.scrollX;
-            offsetY = r.top + window.scrollY;
-        }
-        setTip({
-            show: true,
-            x: (evt.pageX ?? 0) - offsetX + 14,
-            y: (evt.pageY ?? 0) - offsetY + 14,
-            lines: lines.filter(Boolean),
-        });
     };
+
+    const graphHeight = useMemo(() => {
+        const allPositions = [...Object.values(localPos), ...Object.values(remotePos)];
+        return allPositions.length === 0 ? 260 : Math.max(...allPositions.map(p => p.y)) + 80;
+    }, [localPos, remotePos]);
+
+    const showTip = (evt, lines) => setTip({ show: true, x: evt.clientX + 15, y: evt.clientY + 15, lines: lines.filter(Boolean) });
     const hideTip = () => setTip(s => ({ ...s, show: false }));
 
-    if (!repoId) return <div className="panel"><div className="empty">레포지토리를 선택하면 그래프가 표시됩니다.</div></div>;
-    if (loading) return <div className="panel"><div className="empty">그래프 불러오는 중…</div></div>;
-    if (err) return <div className="panel"><div className="error">{err}</div></div>;
+    const stagingAnimClass = state.animationMode === 'add' ? 'anim-add' : 'anim-commit';
 
     return (
-        <div className="visualization-area" ref={stageRef} style={{ position: "relative" }}>
+        <div className="visualization-area">
             <AnimationEngine />
-
+            <div className="view-options">
+                <label className="toggle-switch">
+                    <input type="checkbox" checked={simplified} onChange={() => setSimplified(s => !s)} />
+                    <span className="slider"></span>
+                </label>
+                <span>단순화 보기</span>
+            </div>
             <div className="stage">
-                {/* LOCAL */}
                 <div className="panel">
                     <h3>Local</h3>
-                    <div className="commit-graph" style={{ position: "relative" }}>
-                        <BranchLine branches={localBranches} />
-                        {/* 브랜치 라벨 */}
-                        {branchLabelsLocal.map(b => (
-                            <div
-                                key={`lb-${b.name}`}
-                                style={{
-                                    position: "absolute",
-                                    left: b.x - 24,
-                                    top: b.y,
-                                    fontSize: 12,
-                                    padding: "2px 6px",
-                                    borderRadius: 8,
-                                    background: "#eef2ff",
-                                    border: "1px solid #c7d2fe",
-                                    pointerEvents: "none",
-                                }}
-                            >
-                                {b.name}
+                    <div className="commit-graph" style={{ height: `${graphHeight}px` }}>
+                        {showStaging && (<StagingArea files={state.stagingArea} animationClass={stagingAnimClass} />)}
+                        <BranchLine lineSegments={localLineSegments} />
+                        {Object.entries(localBranchLabels).map(([name, info]) => (
+                            <div key={`label-l-${name}`} className="branch-label" style={{ left: info.point.x, top: info.point.y, borderColor: info.color, color: info.color }} onClick={() => handleOpenMergeModal(name)}>
+                                {name}
                             </div>
                         ))}
-
-                        {emptyLocal && <div className="empty">표시할 커밋이 없습니다.</div>}
-
-                        {!emptyLocal &&
-                            Object.entries(localPos).map(([hash, node]) => {
-                                const message = node.message || "";
-                                const files = Array.isArray(node.files) ? node.files : [];
-                                const shortId = hash.slice(0, 7);
-
-                                // CommitNode 자체에 정확한 좌표를 전달 (★ 중요)
-                                return (
-                                    <React.Fragment key={`l-${hash}`}>
-                                        <CommitNode
-                                            commit={{ hash, message, files, branch: node.branch }}
-                                            position={{ x: node.x, y: node.y }}
-                                            isHead={false}
-                                            className={state.transferSnapshot?.type === "push" ? animClass : ""}
-                                        />
-                                        {/* 호버 핫스팟(CommitNode 위에 얇은 오버레이) */}
-                                        <div
-                                            style={{
-                                                position: "absolute",
-                                                left: node.x - 12,
-                                                top: node.y - 12,
-                                                width: 24,
-                                                height: 24,
-                                                borderRadius: "50%",
-                                                // background: "rgba(0,0,0,0.001)", // 필요시 히트박스 디버그
-                                                cursor: "default",
-                                            }}
-                                            onMouseEnter={(e) =>
-                                                showTip(e, [
-                                                    `Commit: ${hash}`,
-                                                    files.length ? `Files: ${files.join(", ")}` : "Files: (none)",
-                                                    `Branch: ${node.branch}`,
-                                                    message ? `Message: ${message}` : "",
-                                                ])
-                                            }
-                                            onMouseMove={(e) =>
-                                                showTip(e, [
-                                                    `Commit: ${hash}`,
-                                                    files.length ? `Files: ${files.join(", ")}` : "Files: (none)",
-                                                    `Branch: ${node.branch}`,
-                                                    message ? `Message: ${message}` : "",
-                                                ])
-                                            }
-                                            onMouseLeave={hideTip}
-                                        />
-                                        {/* 커밋 메시지 + 브랜치 뱃지 */}
-                                        <div
-                                            style={{
-                                                position: "absolute",
-                                                left: node.x - 80,
-                                                top: node.y + 18,
-                                                width: 160,
-                                                textAlign: "center",
-                                            }}
-                                        >
-                                            <div style={{ fontSize: 12, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                                                {message || "(no message)"}
-                                            </div>
-                                            <div style={{ display: "inline-flex", gap: 6, alignItems: "center", marginTop: 4 }}>
-                        <span style={{ fontSize: 11, padding: "1px 6px", borderRadius: 8, background: "#f1f5f9", border: "1px solid #e2e8f0" }}>
-                          {node.branch}
-                        </span>
-                                                <span style={{ fontSize: 11, color: "#64748b" }}>{shortId}</span>
-                                            </div>
-                                        </div>
-                                    </React.Fragment>
-                                );
-                            })}
+                        {Object.entries(localPos).map(([hash, node]) => {
+                            const isMergeCommit = node.parents && node.parents.length > 1;
+                            return (
+                                <React.Fragment key={`l-${hash}`}>
+                                    <CommitNode position={node} isMerge={isMergeCommit} color={(localBranchLabels[node.branch] || {}).color} />
+                                    <div style={{ position: 'absolute', left: node.x, top: node.y, width: 32, height: 32, borderRadius: '50%', transform: 'translate(-50%, -50%)', cursor: 'pointer', zIndex: 2 }} onMouseEnter={(e) => showTip(e, [`Commit: ${hash}`, `Message: ${node.message}`, `Branch: ${node.branch}`])} onMouseLeave={hideTip} />
+                                    <div style={{ position: 'absolute', left: node.x, top: node.y, transform: 'translateX(-50%)', paddingTop: '22px', width: 160, textAlign: 'center', pointerEvents: 'none', zIndex: 1 }}>
+                                        <div style={{ fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', padding: '2px 4px', background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(4px)', borderRadius: '4px' }}>{node.message}</div>
+                                        <div style={{ display: 'inline-flex', gap: 6, alignItems: 'center', marginTop: 4, fontSize: 11, color: 'var(--muted)' }}><span>{hash.slice(0, 7)}</span></div>
+                                    </div>
+                                </React.Fragment>
+                            )
+                        })}
                     </div>
                 </div>
 
-                {/* REMOTE */}
                 <div className="panel">
                     <h3>Remote</h3>
-                    <div className="commit-graph" style={{ position: "relative" }}>
-                        <BranchLine branches={remoteBranches} remote />
-                        {/* 브랜치 라벨 */}
-                        {branchLabelsRemote.map(b => (
-                            <div
-                                key={`rb-${b.name}`}
-                                style={{
-                                    position: "absolute",
-                                    left: b.x - 24,
-                                    top: b.y,
-                                    fontSize: 12,
-                                    padding: "2px 6px",
-                                    borderRadius: 8,
-                                    background: "#effdf5",
-                                    border: "1px solid #bbf7d0",
-                                    pointerEvents: "none",
-                                }}
-                            >
-                                {b.name}
+                    <div className="commit-graph" style={{ height: `${graphHeight}px` }}>
+                        <BranchLine lineSegments={remoteLineSegments} remote />
+                        {Object.entries(remoteBranchLabels).map(([name, info]) => (
+                            <div key={`label-r-${name}`} className="branch-label" style={{ left: info.point.x, top: info.point.y, borderColor: info.color, color: info.color, cursor: 'default' }}>
+                                {name}
                             </div>
                         ))}
-
-                        {emptyRemote && <div className="empty">표시할 커밋이 없습니다.</div>}
-
-                        {!emptyRemote &&
-                            Object.entries(remotePos).map(([hash, node]) => {
-                                const message = node.message || "";
-                                const files = Array.isArray(node.files) ? node.files : [];
-                                const shortId = hash.slice(0, 7);
-
-                                return (
-                                    <React.Fragment key={`r-${hash}`}>
-                                        <CommitNode
-                                            commit={{ hash, message, files, branch: node.branch }}
-                                            position={{ x: node.x, y: node.y }}
-                                            isHead={false}
-                                            className={state.transferSnapshot?.type === "pull" ? animClass : ""}
-                                        />
-                                        {/* 호버 핫스팟 */}
-                                        <div
-                                            style={{
-                                                position: "absolute",
-                                                left: node.x - 12,
-                                                top: node.y - 12,
-                                                width: 24,
-                                                height: 24,
-                                                borderRadius: "50%",
-                                                cursor: "default",
-                                            }}
-                                            onMouseEnter={(e) =>
-                                                showTip(e, [
-                                                    `Commit: ${hash}`,
-                                                    files.length ? `Files: ${files.join(", ")}` : "Files: (none)",
-                                                    `Branch: ${node.branch}`,
-                                                    message ? `Message: ${message}` : "",
-                                                ])
-                                            }
-                                            onMouseMove={(e) =>
-                                                showTip(e, [
-                                                    `Commit: ${hash}`,
-                                                    files.length ? `Files: ${files.join(", ")}` : "Files: (none)",
-                                                    `Branch: ${node.branch}`,
-                                                    message ? `Message: ${message}` : "",
-                                                ])
-                                            }
-                                            onMouseLeave={hideTip}
-                                        />
-                                        {/* 커밋 메시지 + 브랜치 뱃지 */}
-                                        <div
-                                            style={{
-                                                position: "absolute",
-                                                left: node.x - 80,
-                                                top: node.y + 18,
-                                                width: 160,
-                                                textAlign: "center",
-                                            }}
-                                        >
-                                            <div style={{ fontSize: 12, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                                                {message || "(no message)"}
-                                            </div>
-                                            <div style={{ display: "inline-flex", gap: 6, alignItems: "center", marginTop: 4 }}>
-                        <span style={{ fontSize: 11, padding: "1px 6px", borderRadius: 8, background: "#f1f5f9", border: "1px solid #e2e8f0" }}>
-                          {node.branch}
-                        </span>
-                                                <span style={{ fontSize: 11, color: "#64748b" }}>{shortId}</span>
-                                            </div>
-                                        </div>
-                                    </React.Fragment>
-                                );
-                            })}
+                        {Object.entries(remotePos).map(([hash, node]) => {
+                            const isMergeCommit = node.parents && node.parents.length > 1;
+                            const originalLocalCommit = localPos[hash];
+                            const originBranchName = originalLocalCommit ? originalLocalCommit.branch : null;
+                            const originColor = originBranchName ? (localBranchLabels[originBranchName] || {}).color : (remoteBranchLabels[node.branch] || {}).color;
+                            return (
+                                <React.Fragment key={`r-${hash}`}>
+                                    <CommitNode position={node} isMerge={isMergeCommit} color={originColor} />
+                                    <div style={{ position: 'absolute', left: node.x, top: node.y, width: 32, height: 32, borderRadius: '50%', transform: 'translate(-50%, -50%)', cursor: 'pointer', zIndex: 2 }} onMouseEnter={(e) => showTip(e, [`Commit: ${hash}`, `Message: ${node.message}`, `Branch: ${node.branch}`])} onMouseLeave={hideTip} />
+                                    <div style={{ position: 'absolute', left: node.x, top: node.y, transform: 'translateX(-50%)', paddingTop: '22px', width: 160, textAlign: 'center', pointerEvents: 'none', zIndex: 1 }}>
+                                        <div style={{ fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', padding: '2px 4px', background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(4px)', borderRadius: '4px' }}>{node.message}</div>
+                                        <div style={{ display: 'inline-flex', gap: 6, alignItems: 'center', marginTop: 4, fontSize: 11, color: 'var(--muted)' }}><span>{hash.slice(0, 7)}</span></div>
+                                    </div>
+                                </React.Fragment>
+                            )
+                        })}
                     </div>
                 </div>
             </div>
-
-            {/* 툴팁 */}
-            {tip.show && (
-                <div
-                    style={{
-                        position: "absolute",
-                        left: tip.x,
-                        top: tip.y,
-                        maxWidth: 420,
-                        fontSize: 12,
-                        lineHeight: 1.4,
-                        background: "rgba(17,24,39,0.95)",
-                        color: "white",
-                        padding: "8px 10px",
-                        borderRadius: 8,
-                        boxShadow: "0 6px 20px rgba(0,0,0,.25)",
-                        pointerEvents: "none",
-                        zIndex: 50,
-                        whiteSpace: "break-spaces",
-                    }}
-                >
-                    {tip.lines.map((l, i) => (
-                        <div key={i}>{l}</div>
-                    ))}
-                </div>
-            )}
+            <MergeBranchModal open={mergeModalState.open} onClose={() => setMergeModalState({ open: false, sourceBranch: null })} sourceBranch={mergeModalState.sourceBranch} targetOptions={Object.keys(localBranchLabels).filter(b => b !== mergeModalState.sourceBranch)} onConfirm={handleMergeConfirm} />
+            {tip.show && (<div style={{ position: 'fixed', left: tip.x, top: tip.y, maxWidth: 420, fontSize: 12, lineHeight: 1.4, background: 'rgba(17,24,39,0.95)', color: 'white', padding: '8px 10px', borderRadius: 8, zIndex: 1250 }}>{tip.lines.map((l, i) => <div key={i}>{l}</div>)}</div>)}
         </div>
     );
 }
