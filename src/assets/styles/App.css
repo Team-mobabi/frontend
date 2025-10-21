@@ -325,39 +325,6 @@ body {
     box-shadow: 0 0 0 4px rgba(75, 90, 228, .3);
 }
 
-.commit-details {
-    position: absolute;
-    left: 50%;
-    transform: translateX(-50%);
-    top: 22px;
-    width: 160px;
-    text-align: center;
-    pointer-events: none;
-    z-index: 1;
-}
-
-.commit-details-message {
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--text);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    padding: 2px 4px;
-    background: rgba(255, 255, 255, 0.7);
-    backdrop-filter: blur(4px);
-    border-radius: 4px;
-}
-
-.commit-details-info {
-    display: inline-flex;
-    gap: 6px;
-    align-items: center;
-    margin-top: 4px;
-    font-size: 11px;
-    color: var(--muted);
-}
-
 .branch-svg {
     position: absolute;
     inset: 0;
@@ -512,11 +479,6 @@ body {
     color: var(--danger)
 }
 
-.combo-wrap {
-    position: relative;
-    display: inline-block
-}
-
 .btn-split-wrap {
     display: inline-flex;
     position: relative;
@@ -590,19 +552,22 @@ body {
     cursor: not-allowed !important;
 }
 
+/* Animation Staging Area */
 .staging-area {
     position: absolute;
-    bottom: 10px;
-    left: 10px;
-    right: 10px;
+    bottom: 16px;
+    left: 16px;
+    right: 16px;
     min-height: 80px;
-    background: var(--panel-2);
-    border: 1px dashed var(--line);
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(4px);
+    border: 2px dashed var(--line);
     border-radius: 12px;
     padding: 8px;
     z-index: 10;
     opacity: 0;
-    transform-origin: center top;
+    transform-origin: center bottom;
+    animation: stage-in 0.5s cubic-bezier(0.25, 1, 0.5, 1) forwards;
 }
 
 .staging-area .staging-title {
@@ -621,6 +586,26 @@ body {
     padding: 4px;
 }
 
+.staging-empty-text {
+    font-size: 12px;
+    color: var(--muted);
+    padding: 10px 0;
+    text-align: center;
+}
+
+.chip-pill-static {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    border-radius: 999px;
+    background: #fff;
+    border: 1px solid var(--line);
+    font-size: 12px;
+    color: var(--text);
+}
+
+/* Animations */
 .staging-area.anim-add {
     animation: stage-in 0.5s cubic-bezier(0.25, 1, 0.5, 1) forwards;
 }
@@ -737,12 +722,13 @@ body {
 }
 
 .sv-card {
-    width: min(520px, 92%);
+    width: min(520px);
     background: var(--panel);
     border: 1px solid var(--line);
     border-radius: var(--radius);
     box-shadow: var(--shadow);
     padding: 16px;
+    justify-self: end;
 }
 
 .sv-title {
@@ -917,6 +903,51 @@ input:checked + .slider {
 input:checked + .slider:before {
     transform: translateX(14px);
 }
+
+/* Animation Engine Styles */
+.animation-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(255, 255, 255, 0.5);
+    backdrop-filter: blur(4px);
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: fadeIn 0.3s ease;
+}
+
+.animation-toast {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    padding: 16px 24px;
+    font-weight: 700;
+    color: var(--text);
+}
+
+.spinner {
+    width: 20px;
+    height: 20px;
+    border: 3px solid var(--accent-light);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
 @media (max-width: 980px) {
     .splash-hero {
         grid-template-columns: 1fr;

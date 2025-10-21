@@ -5,7 +5,7 @@ import CommitNode from "./CommitNode";
 import BranchLine from "./BranchLine";
 import AnimationEngine from "./AnimationEngine";
 import StagingArea from "./StagingArea";
-import MergeBranchModal from "../../components/Modal/MergeBranchModal";
+import MergeBranchModal from "../../components/Modal/MergeBranchModal.jsx";
 
 const Y = 85;
 const X = 180;
@@ -89,9 +89,9 @@ export default function RepositoryView() {
     const repoId = state?.selectedRepoId;
     const [graph, setGraph] = useState({ local: null, remote: null });
     const [tip, setTip] = useState({ show: false, x: 0, y: 0, lines: [] });
-    const [showStaging, setShowStaging] = useState(false);
     const [mergeModalState, setMergeModalState] = useState({ open: false, sourceBranch: null });
     const [simplified, setSimplified] = useState(false);
+    const [showStaging, setShowStaging] = useState(false);
 
     useEffect(() => {
         if (!repoId) { setGraph({ local: null, remote: null }); return; }
@@ -101,10 +101,15 @@ export default function RepositoryView() {
     }, [repoId, state.graphVersion, simplified]);
 
     useEffect(() => {
-        if (state.animationMode === 'add') setShowStaging(true);
-        else if (state.animationMode === 'commit') setTimeout(() => setShowStaging(false), 600);
-        else if (state.animationMode === 'idle' && state.stagingArea.length === 0) setShowStaging(false);
-    }, [state.animationMode, state.stagingArea.length]);
+        // [수정] 'commit' 애니메이션이 시작될 때만 하단 패널을 보여줍니다.
+        if (state.animationMode === 'commit') {
+            setShowStaging(true);
+        }
+        // [수정] 애니메이션이 끝나면(idle) 무조건 숨깁니다.
+        else if (state.animationMode === 'idle') {
+            setShowStaging(false);
+        }
+    }, [state.animationMode]);
 
     const localPos = useMemo(() => calcPositions(graph.local), [graph.local]);
     const remotePos = useMemo(() => calcPositions(graph.remote), [graph.remote]);
@@ -135,7 +140,8 @@ export default function RepositoryView() {
     const showTip = (evt, lines) => setTip({ show: true, x: evt.clientX + 15, y: evt.clientY + 15, lines: lines.filter(Boolean) });
     const hideTip = () => setTip(s => ({ ...s, show: false }));
 
-    const stagingAnimClass = state.animationMode === 'add' ? 'anim-add' : 'anim-commit';
+    const stagingAnimClass =
+        state.animationMode === 'commit' ? 'anim-commit' : '';
 
     return (
         <div className="visualization-area">
@@ -151,7 +157,14 @@ export default function RepositoryView() {
                 <div className="panel">
                     <h3>Local</h3>
                     <div className="commit-graph" style={{ height: `${graphHeight}px` }}>
-                        {showStaging && (<StagingArea files={state.stagingArea} animationClass={stagingAnimClass} />)}
+
+                        {showStaging && (
+                            <StagingArea
+                                files={state.stagingArea}
+                                animationClass={stagingAnimClass}
+                            />
+                        )}
+
                         <BranchLine lineSegments={localLineSegments} />
                         {Object.entries(localBranchLabels).map(([name, info]) => (
                             <div key={`label-l-${name}`} className="branch-label" style={{ left: info.point.x, top: info.point.y, borderColor: info.color, color: info.color }} onClick={() => handleOpenMergeModal(name)}>

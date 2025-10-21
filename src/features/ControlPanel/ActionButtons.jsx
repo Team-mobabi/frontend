@@ -108,7 +108,7 @@ export default function ActionButtons() {
             }
             if (stagedNames.length > 0) {
                 dispatch({ type: "ADD_SELECTED", payload: stagedNames });
-                dispatch({ type: "SET_ANIMATION", payload: "add" });
+                dispatch({ type: "SET_ANIMATION_START", payload: "add" });
                 setStep(3);
                 setToast(`${stagedNames.length}개 파일을 담았어요.`);
             }
@@ -120,7 +120,7 @@ export default function ActionButtons() {
         const text = msg.trim();
         if (!text) return;
         setBusy(true);
-        dispatch({ type: "SET_ANIMATION", payload: "commit" });
+        dispatch({ type: "SET_ANIMATION_START", payload: "commit" });
         setTimeout(async () => {
             try {
                 await api.repos.commit(repoId, text);
@@ -130,7 +130,7 @@ export default function ActionButtons() {
                 if(needsInitialPush) setNeedsInitialPush(false);
             } catch (e) {
                 fail(e, "버전 저장에 실패했어요.");
-                dispatch({ type: "SET_ANIMATION", payload: "idle" });
+                dispatch({ type: "SET_ANIMATION_END" });
             } finally {
                 setBusy(false);
             }
@@ -147,11 +147,10 @@ export default function ActionButtons() {
             if (transfer.length > 0) {
                 const payload = { type: "push", branch: branchName, commits: transfer, files: summarizeFiles(transfer) };
                 dispatch({ type: "SET_TRANSFER", payload });
-                dispatch({ type: "SET_ANIMATION", payload: "push" });
+                dispatch({ type: "SET_ANIMATION_START", payload: "push" });
             }
             await api.repos.push(repoId, { branch: branchName });
             setTimeout(() => {
-                dispatch({ type: "GRAPH_DIRTY" });
                 setStep(1);
                 setToast("원격으로 올렸어요.");
             }, 600);
@@ -163,6 +162,7 @@ export default function ActionButtons() {
             } else {
                 fail(e, "올리기에 실패했어요.");
             }
+            dispatch({ type: "SET_ANIMATION_END" });
         } finally {
             setBusy(false);
         }
@@ -178,11 +178,10 @@ export default function ActionButtons() {
             if (transfer.length > 0) {
                 const payload = { type: "pull", branch: branchName, commits: transfer, files: summarizeFiles(transfer) };
                 dispatch({ type: "SET_TRANSFER", payload });
-                dispatch({ type: "SET_ANIMATION", payload: "pull" });
+                dispatch({ type: "SET_ANIMATION_START", payload: "pull" });
             }
             await api.repos.pull(repoId, { branch: branchName });
             setTimeout(() => {
-                dispatch({ type: "GRAPH_DIRTY" });
                 setStep(2);
                 setToast("원격에서 받아왔어요.");
             }, 600);
@@ -198,6 +197,7 @@ export default function ActionButtons() {
             } else {
                 fail(e, "받아오기에 실패했어요.");
             }
+            dispatch({ type: "SET_ANIMATION_END" });
         } finally {
             setBusy(false);
         }

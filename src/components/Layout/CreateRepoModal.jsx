@@ -28,7 +28,7 @@ export default function CreateRepoModal({ open, onClose, onRepoCreated }) {
 
             await api.repos.connectRemoteLocal(repoId, { name: 'origin' });
 
-            onRepoCreated(repoId);
+            onRepoCreated(newRepo);
             onClose();
         } catch (e) {
             setErr(e.message || "레포지토리 생성 또는 원격 연결에 실패했습니다.");

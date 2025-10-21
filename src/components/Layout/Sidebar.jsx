@@ -23,8 +23,11 @@ export default function Sidebar() {
         }
     };
 
-    const handleRepoCreated = () => {
-        dispatch({ type: "GRAPH_DIRTY" });
+    const handleRepoCreated = (newRepo) => {
+        const repoId = newRepo.repoId || newRepo.id;
+
+        dispatch({ type: "ADD_REPO", payload: newRepo });
+        dispatch({ type: "SELECT_REPO", payload: repoId });
     };
 
     return (
