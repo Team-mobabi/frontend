@@ -24,9 +24,11 @@ function uniq(arr) {
     }
     return out;
 }
+
 function candidatesFromStatus(st) {
     const pool = [];
-    const buckets = ["untracked", "modified", "changed", "unstaged", "notAdded", "renamed", "files"];
+    // [수정] 'allFiles' 필드를 확인하도록 추가
+    const buckets = ["untracked", "modified", "changed", "unstaged", "notAdded", "renamed", "files", "allFiles"];
     for (const k of buckets) {
         toArray(st?.[k]).forEach(x => {
             const n = nameOf(x);
@@ -79,7 +81,7 @@ export default function AddModal({open, onCancel, onConfirm, workingDirectory = 
         setErr("");
         try {
             const st = await api.repos.status(repoId);
-            setFiles(candidatesFromStatus(st));
+            setFiles(candidatesFromStatus(st)); // 수정된 함수로 파일 목록 가져오기
         } catch (e) {
             const raw = e?.data?.message ?? e?.message ?? "상태를 불러오지 못했습니다.";
             setErr(Array.isArray(raw) ? raw.join("\n") : String(raw));
@@ -111,7 +113,6 @@ export default function AddModal({open, onCancel, onConfirm, workingDirectory = 
     function onFilePick(e) {
         const list = Array.from(e.target.files || []);
         setPickedFiles(list);
-        // input 값 초기화 (동일한 폴더/파일을 다시 선택할 수 있도록)
         if (inputRef.current) {
             inputRef.current.value = null;
         }
@@ -125,7 +126,6 @@ export default function AddModal({open, onCancel, onConfirm, workingDirectory = 
         e.preventDefault();
         const list = Array.from(e.dataTransfer?.files || []);
 
-        // 폴더 드롭 시도 감지 (간단한 체크)
         let hasDirectory = false;
         try {
             if (e.dataTransfer.items) {
@@ -153,7 +153,7 @@ export default function AddModal({open, onCancel, onConfirm, workingDirectory = 
     }
 
     function handleConfirm() {
-        console.log("모달 확인 버튼 클릭됨!"); // 로그 추가
+        console.log("모달 확인 버튼 클릭됨!");
         if (tab === "status") {
             const pickedNames = Array.from(selected);
             if (pickedNames.length === 0) return;
@@ -193,7 +193,6 @@ export default function AddModal({open, onCancel, onConfirm, workingDirectory = 
 
                     {tab === "status" ? (
                         <>
-                            {/* [복원] '변경된 파일' 탭 UI */}
                             <input
                                 className="input"
                                 placeholder="필터..."
@@ -234,7 +233,6 @@ export default function AddModal({open, onCancel, onConfirm, workingDirectory = 
                         </>
                     ) : (
                         <>
-                            {/* [수정] input 태그에 webkitdirectory 속성 추가 */}
                             <input
                                 ref={inputRef}
                                 type="file"
@@ -255,19 +253,16 @@ export default function AddModal({open, onCancel, onConfirm, workingDirectory = 
                                     marginBottom: 10
                                 }}
                             >
-                                {/* [수정] 안내 문구 변경 */}
                                 <div style={{fontSize: 13, color: "var(--sub)", marginBottom: 8}}>여기로 파일을 끌어다 놓거나<br/>아래 버튼으로 파일 **또는 폴더**를 선택하세요.</div>
                                 <button className="btn" type="button" onClick={openPicker}>파일 / 폴더 선택</button>
                             </div>
 
-                            {/* [추가] 폴더 드롭 시 에러 메시지 표시 */}
                             {err && <div style={{ color: "var(--danger)", marginBottom: '10px' }}>{err}</div>}
 
                             {pickedFiles.length > 0 ? (
                                 <div className="push-list" style={{maxHeight: 240, overflow: "auto"}}>
                                     {pickedFiles.map(f => (
                                         <div key={f.name + f.size + f.lastModified} className="push-row">
-                                            {/* [수정] 폴더 선택 시 상대 경로 표시 */}
                                             <div className="push-msg" title={f.webkitRelativePath || f.name}>
                                                 {f.webkitRelativePath || f.name}
                                             </div>
@@ -286,7 +281,6 @@ export default function AddModal({open, onCancel, onConfirm, workingDirectory = 
 
                 <div className="modal-actions">
                     <button className="btn" onClick={onCancel} disabled={loading}>취소</button>
-                    {/* [수정] 버튼 텍스트 변경 */}
                     <button className="btn btn-primary" onClick={handleConfirm}
                             disabled={isConfirmDisabled || loading}>
                         {tab === 'status' ? '선택한 파일 담기' : '선택한 파일/폴더 업로드하여 담기'}
