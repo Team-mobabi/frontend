@@ -1,125 +1,40 @@
 import React, {useEffect, useMemo, useRef, useState} from "react";
-import {api} from "../../features/API";
-import {useGit} from "../GitCore/GitContext.jsx";
+// [삭제] api, useGit 임포트 제거 (더 이상 status 안 부름)
 
-// --- Helper Functions ---
-function toArray(x) {
-    if (!x) return [];
-    return Array.isArray(x) ? x : [x]
-}
-function nameOf(it) {
-    if (typeof it === "string") return it;
-    return it?.path || it?.file || it?.name || it?.filename || ""
-}
-function uniq(arr) {
-    const s = new Set();
-    const out = [];
-    for (const a of arr) {
-        const k = String(a || "");
-        if (!k) continue;
-        if (!s.has(k)) {
-            s.add(k);
-            out.push(k)
-        }
-    }
-    return out;
-}
-
-function candidatesFromStatus(st) {
-    const pool = [];
-    // [수정] 'allFiles' 필드를 확인하도록 추가
-    const buckets = ["untracked", "modified", "changed", "unstaged", "notAdded", "renamed", "files", "allFiles"];
-    for (const k of buckets) {
-        toArray(st?.[k]).forEach(x => {
-            const n = nameOf(x);
-            if (n) pool.push(n)
-        })
-    }
-    return uniq(pool);
-}
+// [삭제] Helper Functions (candidatesFromStatus 등) 모두 제거
 
 // --- Component ---
-export default function AddModal({open, onCancel, onConfirm, workingDirectory = "", staged = []}) {
-    const {state} = useGit();
-    const repoId = useMemo(() => state?.selectedRepoId == null ? "" : String(state.selectedRepoId).trim(), [state?.selectedRepoId]);
-
-    const [tab, setTab] = useState("status");
-    const [loading, setLoading] = useState(false);
+export default function AddModal({open, onCancel, onConfirm}) {
+    // [삭제] status 관련 state 모두 제거 (tab, loading, files, selected, q 등)
     const [err, setErr] = useState("");
-
-    const [files, setFiles] = useState([]);
-    const [selected, setSelected] = useState(new Set(staged.map(String)));
-    const [q, setQ] = useState("");
-
     const [pickedFiles, setPickedFiles] = useState([]);
-    const inputRef = useRef(null);
+
+    const fileInputRef = useRef(null);
+    const folderInputRef = useRef(null);
 
     useEffect(() => {
         if (open) {
             init();
         }
-    }, [open, repoId]);
+    }, [open]);
 
     function init() {
         setErr("");
-        setQ("");
-        setSelected(new Set(staged.map(String)));
         setPickedFiles([]);
-        setTab("status");
-        loadStatus();
+        // [삭제] loadStatus() 호출 제거
     }
 
-    const filtered = useMemo(() => {
-        const qq = q.trim().toLowerCase();
-        if (!qq) return files;
-        return files.filter(f => f.toLowerCase().includes(qq));
-    }, [q, files]);
-
-    async function loadStatus() {
-        if (!repoId) return;
-        setLoading(true);
-        setErr("");
-        try {
-            const st = await api.repos.status(repoId);
-            setFiles(candidatesFromStatus(st)); // 수정된 함수로 파일 목록 가져오기
-        } catch (e) {
-            const raw = e?.data?.message ?? e?.message ?? "상태를 불러오지 못했습니다.";
-            setErr(Array.isArray(raw) ? raw.join("\n") : String(raw));
-            setFiles([]);
-        } finally {
-            setLoading(false);
-        }
-    }
-
-    function toggle(name) {
-        setSelected(prev => {
-            const next = new Set(prev);
-            if (next.has(name)) next.delete(name); else next.add(name);
-            return next;
-        });
-    }
-
-    function toggleAll(checked) {
-        if (checked) setSelected(new Set(filtered));
-        else setSelected(new Set());
-    }
-
-    async function copyPath() {
-        try {
-            await navigator.clipboard.writeText(String(workingDirectory || ""));
-        } catch {}
-    }
+    // [삭제] status 관련 함수 모두 제거 (loadStatus, toggle, toggleAll, copyPath 등)
 
     function onFilePick(e) {
         const list = Array.from(e.target.files || []);
         setPickedFiles(list);
-        if (inputRef.current) {
-            inputRef.current.value = null;
-        }
-    }
 
-    function openPicker() {
-        inputRef.current?.click();
+        if (e.target.webkitdirectory) {
+            if (folderInputRef.current) folderInputRef.current.value = null;
+        } else {
+            if (fileInputRef.current) fileInputRef.current.value = null;
+        }
     }
 
     function onDrop(e) {
@@ -140,7 +55,7 @@ export default function AddModal({open, onCancel, onConfirm, workingDirectory = 
         } catch (err) { /* 무시 */ }
 
         if (hasDirectory) {
-            setErr("폴더 끌어다 놓기는 지원되지 않습니다. '파일 / 폴더 선택' 버튼을 이용해주세요.");
+            setErr("폴더 끌어다 놓기는 지원되지 않습니다. '폴더 선택' 버튼을 이용해주세요.");
             setPickedFiles([]);
         } else {
             setErr("");
@@ -154,136 +69,94 @@ export default function AddModal({open, onCancel, onConfirm, workingDirectory = 
 
     function handleConfirm() {
         console.log("모달 확인 버튼 클릭됨!");
-        if (tab === "status") {
-            const pickedNames = Array.from(selected);
-            if (pickedNames.length === 0) return;
-            onConfirm(pickedNames);
-        } else if (tab === "pick") {
-            if (pickedFiles.length === 0) return;
-            onConfirm(pickedFiles);
-        }
+        // [수정] "status" 탭 분기 제거
+        if (pickedFiles.length === 0) return;
+        onConfirm(pickedFiles); // 항상 File 객체 배열(pickedFiles)을 전달
     }
 
     if (!open) return null;
 
-    const isConfirmDisabled = tab === 'status'
-        ? selected.size === 0
-        : pickedFiles.length === 0;
+    // [수정] "status" 탭 분기 제거
+    const isConfirmDisabled = pickedFiles.length === 0;
 
     return (
         <div className="modal-backdrop" onClick={onCancel}>
             <div className="modal" onClick={e => e.stopPropagation()}>
                 <div className="modal-head">
-                    <h4>파일 담기</h4>
+                    <h4>파일 담기 (업로드)</h4>
                     <button className="modal-close" onClick={onCancel}>×</button>
                 </div>
 
                 <div className="modal-body">
-                    <div style={{display: "flex", gap: 8, marginBottom: 12}}>
-                        <button className={tab === "status" ? "btn btn-primary" : "btn"}
-                                onClick={() => setTab("status")}>변경된 파일
-                        </button>
-                        <button className={tab === "pick" ? "btn btn-primary" : "btn"} onClick={() => setTab("pick")}>파일
-                            선택
-                        </button>
-                        <div style={{flex: 1}}/>
-                        {tab === "status" && <button className="btn" onClick={loadStatus}
-                                                     disabled={loading}>{loading ? "새로고침…" : "새로고침"}</button>}
-                    </div>
+                    {/* [삭제] 탭 버튼 UI 제거 */}
 
-                    {tab === "status" ? (
-                        <>
-                            <input
-                                className="input"
-                                placeholder="필터..."
-                                value={q}
-                                onChange={e => setQ(e.target.value)}
-                                style={{ marginBottom: 12 }}
-                            />
-                            {loading && <div><span className="spinner" /> 파일 목록 로딩 중...</div>}
-                            {err && <div style={{ color: "var(--danger)" }}>{err}</div>}
-                            {!loading && !err && (
-                                <div style={{ maxHeight: 300, overflow: "auto" }}>
-                                    {filtered.length > 0 ? (
-                                        <div className="file-list">
-                                            <div className="file-item file-item-header">
-                                                <input
-                                                    type="checkbox"
-                                                    onChange={e => toggleAll(e.target.checked)}
-                                                    checked={filtered.length > 0 && selected.size === filtered.length}
-                                                />
-                                                <span>파일 경로</span>
-                                            </div>
-                                            {filtered.map(name => (
-                                                <div key={name} className="file-item" onClick={() => toggle(name)}>
-                                                    <input
-                                                        type="checkbox"
-                                                        readOnly
-                                                        checked={selected.has(name)}
-                                                    />
-                                                    <span title={name}>{name}</span>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    ) : (
-                                        <div className="empty">변경된 파일이 없습니다.</div>
-                                    )}
-                                </div>
-                            )}
-                        </>
-                    ) : (
-                        <>
-                            <input
-                                ref={inputRef}
-                                type="file"
-                                multiple
-                                style={{ display: "none" }}
-                                onChange={onFilePick}
-                                webkitdirectory=""
-                            />
-                            <div
-                                onDrop={onDrop}
-                                onDragOver={onDragOver}
-                                style={{
-                                    border: "2px dashed var(--line)",
-                                    background: "var(--panel-2)",
-                                    borderRadius: 12,
-                                    padding: 20,
-                                    textAlign: "center",
-                                    marginBottom: 10
-                                }}
-                            >
-                                <div style={{fontSize: 13, color: "var(--sub)", marginBottom: 8}}>여기로 파일을 끌어다 놓거나<br/>아래 버튼으로 파일 **또는 폴더**를 선택하세요.</div>
-                                <button className="btn" type="button" onClick={openPicker}>파일 / 폴더 선택</button>
+                    {/* [수정] 탭 분기(ternary) 제거하고 "pick" 탭 내용만 남김 */}
+                    <>
+                        <input
+                            ref={fileInputRef}
+                            type="file"
+                            multiple
+                            style={{ display: "none" }}
+                            onChange={onFilePick}
+                        />
+                        <input
+                            ref={folderInputRef}
+                            type="file"
+                            multiple
+                            style={{ display: "none" }}
+                            onChange={onFilePick}
+                            webkitdirectory=""
+                        />
+                        <div
+                            onDrop={onDrop}
+                            onDragOver={onDragOver}
+                            style={{
+                                border: "2px dashed var(--line)",
+                                background: "var(--panel-2)",
+                                borderRadius: 12,
+                                padding: 20,
+                                textAlign: "center",
+                                marginBottom: 10
+                            }}
+                        >
+                            <div style={{fontSize: 13, color: "var(--sub)", marginBottom: 8}}>여기로 파일을 끌어다 놓거나<br/>아래 버튼으로 선택하세요.</div>
+
+                            <div style={{ display: 'flex', justifyContent: 'center', gap: '10px' }}>
+                                <button className="btn" type="button" onClick={() => fileInputRef.current?.click()}>
+                                    파일 선택
+                                </button>
+                                <button className="btn" type="button" onClick={() => folderInputRef.current?.click()}>
+                                    폴더 선택
+                                </button>
                             </div>
+                        </div>
 
-                            {err && <div style={{ color: "var(--danger)", marginBottom: '10px' }}>{err}</div>}
+                        {err && <div style={{ color: "var(--danger)", marginBottom: '10px' }}>{err}</div>}
 
-                            {pickedFiles.length > 0 ? (
-                                <div className="push-list" style={{maxHeight: 240, overflow: "auto"}}>
-                                    {pickedFiles.map(f => (
-                                        <div key={f.name + f.size + f.lastModified} className="push-row">
-                                            <div className="push-msg" title={f.webkitRelativePath || f.name}>
-                                                {f.webkitRelativePath || f.name}
-                                            </div>
-                                            <div className="push-msg" style={{fontSize: 12, color: "var(--muted)"}}>
-                                                {(f.size / 1024).toFixed(1)} KB
-                                            </div>
+                        {pickedFiles.length > 0 ? (
+                            <div className="push-list" style={{maxHeight: 240, overflow: "auto"}}>
+                                {pickedFiles.map(f => (
+                                    <div key={f.name + f.size + f.lastModified} className="push-row">
+                                        <div className="push-msg" title={f.webkitRelativePath || f.name}>
+                                            {f.webkitRelativePath || f.name}
                                         </div>
-                                    ))}
-                                </div>
-                            ) : (
-                                <div className="empty">선택된 파일이 없습니다.</div>
-                            )}
-                        </>
-                    )}
+                                        <div className="push-msg" style={{fontSize: 12, color: "var(--muted)"}}>
+                                            {(f.size / 1024).toFixed(1)} KB
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="empty">선택된 파일이 없습니다.</div>
+                        )}
+                    </>
                 </div>
 
                 <div className="modal-actions">
-                    <button className="btn" onClick={onCancel} disabled={loading}>취소</button>
+                    <button className="btn" onClick={onCancel}>취소</button>
                     <button className="btn btn-primary" onClick={handleConfirm}
-                            disabled={isConfirmDisabled || loading}>
-                        {tab === 'status' ? '선택한 파일 담기' : '선택한 파일/폴더 업로드하여 담기'}
+                            disabled={isConfirmDisabled}>
+                        선택한 파일/폴더 업로드하여 담기
                     </button>
                 </div>
             </div>

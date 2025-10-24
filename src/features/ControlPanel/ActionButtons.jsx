@@ -8,7 +8,7 @@ import PushConfirmModal from "../../components/Modal/PushConfirmModal";
 
 const STEP_LABEL = { 1: "원격에서 받아오기", 2: "파일 담기", 3: "메시지 쓰고 저장", 4: "원격으로 올리기" };
 
-// --- Helper Functions ---
+// --- Helper Functions (동일) ---
 function normalizeBranchList(input) {
     if (!input) return ["main"];
     if (!Array.isArray(input) && Array.isArray(input.branches)) { return normalizeBranchList(input.branches); }
@@ -18,13 +18,11 @@ function normalizeBranchList(input) {
     }
     return Object.keys(input || {}).length ? Object.keys(input || {}) : ["main"];
 }
-
 function fileListOf(c) {
     const a = c?.files || [];
     if (Array.isArray(a) && a.length) return a.map(String);
     return [];
 }
-
 function findMissingCommits(graph, branch, direction) {
     const local = graph?.local ?? {};
     const remote = graph?.remote ?? {};
@@ -32,7 +30,6 @@ function findMissingCommits(graph, branch, direction) {
     const rb = remote?.branches?.[branch] || [];
     const lhashes = lb.map((c) => c?.hash || "");
     const rhashes = rb.map((c) => c?.hash || "");
-
     if (direction === "push") {
         const base = rhashes[rhashes.length - 1];
         return base ? lb.slice(lhashes.lastIndexOf(base) + 1) : lb;
@@ -41,7 +38,6 @@ function findMissingCommits(graph, branch, direction) {
         return base ? rb.slice(rhashes.lastIndexOf(base) + 1) : rb;
     }
 }
-
 function summarizeFiles(commits) {
     return Array.from(new Set(commits.flatMap(c => fileListOf(c)).map(String)));
 }
@@ -77,7 +73,7 @@ export default function ActionButtons() {
 
     useEffect(() => {
         if (repoId) {
-            console.log("Repo changed, running initial status check..."); // 상태 확인 로그
+            console.log("Repo changed, running initial status check...");
             Promise.all([
                 api.repos.status(repoId),
                 api.repos.graph(repoId),
@@ -93,8 +89,9 @@ export default function ActionButtons() {
                 }
 
                 setNeedsInitialPush(st.isEmpty);
-                const stagedFiles = Array.isArray(st?.files) ? st.files : [];
 
+                // [수정] "변경된 파일" 탭이 사라졌으므로, st.files(Staging Area)만 확인
+                const stagedFiles = Array.isArray(st?.files) ? st.files : [];
                 const localCommitsToPush = findMissingCommits(graph, currentBranch, "push");
 
                 if (stagedFiles.length > 0) {
@@ -123,7 +120,6 @@ export default function ActionButtons() {
                 }).catch(() => setBranches(["main"]));
             });
         }
-        // [수정] state.graphVersion 의존성 제거!
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [repoId, dispatch]);
 
@@ -132,66 +128,81 @@ export default function ActionButtons() {
 
     const guard = (targetStep, fn) => {
         if (!repoId) return setToast("레포지토리를 먼저 선택해주세요.");
+        console.log(`Guard Check: Target=${targetStep}, Current=${step}, Busy=${busy}`);
         if (step !== targetStep && !(needsInitialPush && targetStep === 2 && step === 1)) {
-            return setToast(`먼저 “${STEP_LABEL[step]}”를 진행해주세요!`);
+            setToast(`먼저 “${STEP_LABEL[step]}”를 진행해주세요!`);
+            return;
         }
         if (busy) return;
+        console.log("Guard Passed. Running function.");
         fn();
     };
 
-    const handleAddConfirm = async (selection) => {
+    // [수정] handleAddConfirm 함수 단순화
+    const handleAddConfirm = async (selection) => { // selection은 이제 항상 File[] 입니다.
+        console.log("[ActionButtons] 1. handleAddConfirm starting!", selection);
         setOpenAdd(false);
-        if (!selection || selection.length === 0) return;
+        if (!selection || selection.length === 0) {
+            console.log("[ActionButtons] No files selected, exiting.");
+            return;
+        }
         setBusy(true);
         try {
-            const isFileUpload = selection[0] instanceof File;
-            let stagedNames = [];
-
-            if (isFileUpload) {
-                const uploadResult = await api.repos.upload(repoId, selection);
-                const uploadedFileNames = Array.isArray(uploadResult?.saved) ? uploadResult.saved : [];
-                if (uploadedFileNames.length > 0) {
-                    await api.repos.add(repoId, uploadedFileNames);
-                }
-                stagedNames = uploadedFileNames;
-            } else {
-                await api.repos.add(repoId, selection);
-                stagedNames = selection;
+            // "변경된 파일" (else) 분기 제거
+            console.log("[ActionButtons] 2. Attempting file upload API call...");
+            const uploadResult = await api.repos.upload(repoId, selection);
+            console.log("[ActionButtons] 3. Upload result received:", uploadResult);
+            const uploadedFileNames = Array.isArray(uploadResult?.saved) ? uploadResult.saved : [];
+            if (uploadedFileNames.length > 0) {
+                await api.repos.add(repoId, uploadedFileNames);
             }
+            const stagedNames = uploadedFileNames;
 
+            console.log("[ActionButtons] 4. stagedNames.length:", stagedNames.length);
             if (stagedNames.length > 0) {
+                console.log("[ActionButtons] 5. Calling setStep(3)!");
                 dispatch({ type: "ADD_SELECTED", payload: stagedNames });
                 dispatch({ type: "SET_ANIMATION_START", payload: "add" });
                 setStep(3);
                 setToast(`${stagedNames.length}개 파일을 담았어요.`);
             } else {
+                console.log("[ActionButtons] 5. stagedNames is 0, skipping setStep(3)!");
                 setToast("파일은 담겼으나, staged 목록이 비어있습니다.");
             }
         } catch (e) {
+            console.error("[ActionButtons] 6. Failed to add files:", e);
             fail(e, "파일 담기에 실패했어요.");
         }
         finally { setBusy(false); }
     };
 
     const handleCommit = async () => {
+        console.log("[ActionButtons] handleCommit 시작!");
         const text = msg.trim();
         if (!text) return;
         setBusy(true);
         dispatch({ type: "SET_ANIMATION_START", payload: "commit" });
-        setTimeout(async () => {
-            try {
-                await api.repos.commit(repoId, text);
-                dispatch({ type: "COMMIT_SUCCESS", message: text });
-                setMsg("");
-                setStep(4);
-                if (needsInitialPush) setNeedsInitialPush(false);
-            } catch (e) {
-                fail(e, "버전 저장에 실패했어요.");
-                dispatch({ type: "SET_ANIMATION_END" });
-            } finally {
-                setBusy(false);
-            }
-        }, 600);
+
+        try {
+            await api.repos.commit(repoId, text);
+            console.log("[ActionButtons] Commit API 200 OK 받음.");
+
+            setMsg("");
+            dispatch({ type: "COMMIT_SUCCESS", message: text });
+
+            console.log("[ActionButtons] 백엔드 동기화를 위해 1초 대기...");
+            await new Promise(resolve => setTimeout(resolve, 1000));
+
+            console.log("[ActionButtons] Step 4로 이동합니다.");
+            setStep(4);
+            if (needsInitialPush) setNeedsInitialPush(false);
+
+        } catch (e) {
+            fail(e, "버전 저장에 실패했어요.");
+            dispatch({ type: "SET_ANIMATION_END" });
+        } finally {
+            setBusy(false);
+        }
     };
 
     const handlePush = async (branchName) => {
@@ -234,7 +245,6 @@ export default function ActionButtons() {
 
         } catch (e) {
             dispatch({ type: "SET_ANIMATION_END" });
-
             if (e.message?.includes("does not exist on remote") || e.message?.includes("no upstream")) {
                 if (window.confirm(`'${branchName}' 브랜치가 원격 저장소에 없습니다.\n새 브랜치로 '게시(Publish)'하시겠습니까?`)) {
                     try {
@@ -261,7 +271,6 @@ export default function ActionButtons() {
         }
     };
 
-    // [수정] handlePull 함수에 로그 추가
     const handlePull = async (branchName) => {
         setBusy(true);
         setPullOpen(false);
@@ -270,16 +279,16 @@ export default function ActionButtons() {
             const graph = await api.repos.graph(repoId);
             const transfer = findMissingCommits(graph, branchName, "pull");
 
-            console.log(`[ActionButtons] Pull API 호출 (${branchName})...`); // 로그 1
+            console.log(`[ActionButtons] Pull API 호출 (${branchName})...`);
             const pullResult = await api.repos.pull(repoId, { branch: branchName });
-            console.log("[ActionButtons] Pull API 결과:", pullResult); // 로그 2
+            console.log("[ActionButtons] Pull API 결과:", pullResult);
 
             if (pullResult?.hasConflict) {
-                console.log("[ActionButtons] 충돌 감지됨! 충돌 해결 모달을 엽니다."); // 로그 3
+                console.log("[ActionButtons] 충돌 감지됨! 충돌 해결 모달을 엽니다.");
                 setToast("충돌이 발생했습니다! AI가 해결책을 제안합니다.");
                 dispatch({ type: "OPEN_CONFLICT_MODAL" });
             } else {
-                console.log("[ActionButtons] 충돌 없음. Step 2로 이동합니다."); // 로그 4
+                console.log("[ActionButtons] 충돌 없음. Step 2로 이동합니다.");
                 if (transfer.length > 0) {
                     const payload = { type: "pull", branch: branchName, commits: transfer, files: summarizeFiles(transfer) };
                     dispatch({ type: "SET_TRANSFER", payload });
@@ -292,7 +301,7 @@ export default function ActionButtons() {
                 }, 600);
             }
         } catch (e) {
-            console.error("[ActionButtons] Pull 실패:", e); // 로그 5
+            console.error("[ActionButtons] Pull 실패:", e);
             if (e.message?.includes("커밋되지 않은 변경사항") || e.message?.includes("Uncommitted Changes")) {
                 setToast("커밋되지 않은 변경사항이 있습니다. 먼저 커밋하거나 stash 해주세요.");
             } else if (e?.status === 409 && e.message?.includes("empty or branch does not exist")) {
@@ -437,7 +446,13 @@ export default function ActionButtons() {
                 <StagingSummary files={state.stagingArea} onRemove={(name) => dispatch({ type: "REMOVE_FROM_STAGING", payload: name })}/>
             </div>
 
-            <AddModal open={openAdd} onCancel={() => setOpenAdd(false)} onConfirm={handleAddConfirm} staged={state.stagingArea} />
+            {/* [수정] staged prop 제거 */}
+            <AddModal
+                open={openAdd}
+                onCancel={() => setOpenAdd(false)}
+                onConfirm={handleAddConfirm}
+            />
+
             <RemoteConnectModal
                 open={remoteModalOpen}
                 repoId={repoId}

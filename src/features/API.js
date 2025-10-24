@@ -110,7 +110,7 @@ export const api = {
         merge: (id, payload) => request("POST", `/repos/${id}/merge`, payload),
         upload: async (id, fileList) => {
             const fd = new FormData();
-            for (const f of fileList) fd.append("files", f, f.name);
+            for (const f of fileList) fd.append("files", f, f.webkitRelativePath || f.name);
             const up = await request("POST", `/repos/${id}/files`, fd);
             let saved =
                 (up &&
