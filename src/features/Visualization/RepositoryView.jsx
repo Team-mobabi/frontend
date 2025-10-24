@@ -6,6 +6,7 @@ import BranchLine from "./BranchLine";
 import AnimationEngine from "./AnimationEngine";
 import StagingArea from "./StagingArea";
 import MergeBranchModal from "../../components/Modal/MergeBranchModal.jsx";
+import ConflictModal from "../../components/Modal/ConflictModal.jsx"; // [추가] 충돌 모달 임포트
 
 const Y = 85;
 const X = 180;
@@ -101,11 +102,9 @@ export default function RepositoryView() {
     }, [repoId, state.graphVersion, simplified]);
 
     useEffect(() => {
-        // [수정] 'commit' 애니메이션이 시작될 때만 하단 패널을 보여줍니다.
         if (state.animationMode === 'commit') {
             setShowStaging(true);
         }
-        // [수정] 애니메이션이 끝나면(idle) 무조건 숨깁니다.
         else if (state.animationMode === 'idle') {
             setShowStaging(false);
         }
@@ -120,13 +119,22 @@ export default function RepositoryView() {
     const remoteBranchLabels = useMemo(() => calcBranchLabels(remotePos), [remotePos]);
 
     const handleOpenMergeModal = (sourceBranch) => setMergeModalState({ open: true, sourceBranch });
+
+    // [수정] 병합 시 'hasConflict'를 확인하는 로직으로 변경
     const handleMergeConfirm = async (targetBranch) => {
         const { sourceBranch } = mergeModalState;
         setMergeModalState({ open: false, sourceBranch: null });
         if (!sourceBranch || !targetBranch) return;
         try {
-            await api.repos.merge(repoId, { sourceBranch, targetBranch });
-            dispatch({ type: "GRAPH_DIRTY" });
+            const mergeResult = await api.repos.merge(repoId, { sourceBranch, targetBranch });
+
+            // 백엔드가 hasConflict: true 를 반환하면 충돌 모달 열기
+            if (mergeResult?.hasConflict) {
+                dispatch({ type: "OPEN_CONFLICT_MODAL" });
+            } else {
+                // 충돌이 없으면 그래프 새로고침
+                dispatch({ type: "GRAPH_DIRTY" });
+            }
         } catch (e) {
             alert(`병합 실패: ${e.message}`);
         }
@@ -215,7 +223,17 @@ export default function RepositoryView() {
                     </div>
                 </div>
             </div>
-            <MergeBranchModal open={mergeModalState.open} onClose={() => setMergeModalState({ open: false, sourceBranch: null })} sourceBranch={mergeModalState.sourceBranch} targetOptions={Object.keys(localBranchLabels).filter(b => b !== mergeModalState.sourceBranch)} onConfirm={handleMergeConfirm} />
+
+            {/* [추가] 충돌 모달 렌더링 */}
+            <ConflictModal />
+
+            <MergeBranchModal
+                open={mergeModalState.open}
+                onClose={() => setMergeModalState({ open: false, sourceBranch: null })}
+                sourceBranch={mergeModalState.sourceBranch}
+                targetOptions={Object.keys(localBranchLabels).filter(b => b !== mergeModalState.sourceBranch)}
+                onConfirm={handleMergeConfirm}
+            />
             {tip.show && (<div style={{ position: 'fixed', left: tip.x, top: tip.y, maxWidth: 420, fontSize: 12, lineHeight: 1.4, background: 'rgba(17,24,39,0.95)', color: 'white', padding: '8px 10px', borderRadius: 8, zIndex: 1250 }}>{tip.lines.map((l, i) => <div key={i}>{l}</div>)}</div>)}
         </div>
     );

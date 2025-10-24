@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { api } from "../../features/API";
+import { api } from "../../features/API.js";
 
 export default function RemoteConnectModal({ open, repoId, onClose, onConnected }) {
     const [tab, setTab] = useState("remote");

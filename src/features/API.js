@@ -2,36 +2,66 @@ const BASE_URL =
     (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_BASE_URL) ||
     (typeof window !== "undefined" && window.__API_BASE_URL__) ||
     "";
-const DEBUG = String(import.meta.env?.VITE_API_DEBUG ?? import.meta.env?.DEV).toLowerCase() === "true";
+const DEBUG =
+    String(import.meta.env?.VITE_API_DEBUG ?? import.meta.env?.DEV).toLowerCase() ===
+    "true";
 
 const tokenKey = "gitgui_token";
 export function getToken() {
-    try { return localStorage.getItem(tokenKey) || ""; } catch { return ""; }
+    try {
+        return localStorage.getItem(tokenKey) || "";
+    } catch {
+        return "";
+    }
 }
 export function setToken(t) {
-    try { t ? localStorage.setItem(tokenKey, t) : localStorage.removeItem(tokenKey); } catch {}
+    try {
+        t ? localStorage.setItem(tokenKey, t) : localStorage.removeItem(tokenKey);
+    } catch {}
 }
-export function clearToken() { setToken(""); }
+export function clearToken() {
+    setToken("");
+}
 
 function qs(params) {
     if (!params) return "";
-    const q = new URLSearchParams(Object.entries(params).filter(([, v]) => v != null)).toString();
+    const q = new URLSearchParams(
+        Object.entries(params).filter(([, v]) => v != null)
+    ).toString();
     return q ? `?${q}` : "";
 }
 
 async function request(method, path, body, options = {}) {
     const authToken = getToken();
-    if (DEBUG) console.info("[API →]", method, (BASE_URL || "") + path, { hasToken: !!authToken, body });
-    const headers = { ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}), ...(options.headers || {}) };
+    if (DEBUG)
+        console.info("[API →]", method, (BASE_URL || "") + path, {
+            hasToken: !!authToken,
+            body,
+        });
+    const headers = {
+        ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+        ...(options.headers || {}),
+    };
     const isForm = typeof FormData !== "undefined" && body instanceof FormData;
-    if (body != null && !isForm && headers["Content-Type"] == null) headers["Content-Type"] = "application/json";
-    const res = await fetch((BASE_URL || "") + path, { method, headers, body: body != null ? (isForm ? body : JSON.stringify(body)) : undefined, ...options });
+    if (body != null && !isForm && headers["Content-Type"] == null)
+        headers["Content-Type"] = "application/json";
+    const res = await fetch((BASE_URL || "") + path, {
+        method,
+        headers,
+        body: body != null ? (isForm ? body : JSON.stringify(body)) : undefined,
+        ...options,
+    });
     let data = null;
-    try { data = await res.json(); } catch {}
-    if (DEBUG) console.info(res.ok ? "[API ← OK]" : "[API ← ERR]", res.status, data);
+    try {
+        data = await res.json();
+    } catch {}
+    if (DEBUG)
+        console.info(res.ok ? "[API ← OK]" : "[API ← ERR]", res.status, data);
     if (!res.ok || (data && data.success === false)) {
         if (res.status === 401) clearToken();
-        const msg = (data && (data.message || data.error)) || `HTTP ${res.status} ${res.statusText}`;
+        const msg =
+            (data && (data.message || data.error)) ||
+            `HTTP ${res.status} ${res.statusText}`;
         const err = new Error(msg);
         err.status = res.status;
         err.data = data;
@@ -50,16 +80,27 @@ export const api = {
             setToken(token);
             return data;
         },
-        signout: async () => { clearToken(); return true; },
+        signout: async () => {
+            clearToken();
+            return true;
+        },
         getToken,
     },
-    user: { me: () => request("GET", "/users/me") },
+    user: {
+        me: () => request("GET", "/users/me"),
+        search: (params) => request("GET", `/users/search${qs(params)}`),
+    },
     repos: {
         create: (payload) => request("POST", `/repos`, payload),
         list: (params) => request("GET", `/repos${qs(params)}`),
         delete: (id) => request("DELETE", `/repos/${id}`),
-        connectRemote: (id, payload) => request("POST", `/repos/${id}/remote`, payload),
-        connectRemoteLocal: (id, payload) => request("POST", `/repos/${id}/remote-local`, payload),
+        listPublic: (params) => request("GET", `/repos/public${qs(params)}`),
+        listUserPublic: (userId, params) => request("GET", `/repos/public/user/${userId}${qs(params)}`),
+        fork: (repoIdToFork) => request("POST", `/repos/fork`, { sourceRepoId: repoIdToFork }),
+        connectRemote: (id, payload) =>
+            request("POST", `/repos/${id}/remote`, payload),
+        connectRemoteLocal: (id, payload) =>
+            request("POST", `/repos/${id}/remote-local`, payload),
         status: (id) => request("GET", `/repos/${id}/status`),
         add: (id, files) => request("POST", `/repos/${id}/add`, { files }),
         commit: (id, message) => request("POST", `/repos/${id}/commit`, { message }),
@@ -71,15 +112,55 @@ export const api = {
             const fd = new FormData();
             for (const f of fileList) fd.append("files", f, f.name);
             const up = await request("POST", `/repos/${id}/files`, fd);
-            let saved = (up && (up.uploadedFiles?.map(f=>f.filename) || up.saved || up.paths || up.files || [])) || [];
+            let saved =
+                (up &&
+                    (up.uploadedFiles?.map((f) => f.filename) ||
+                        up.saved ||
+                        up.paths ||
+                        up.files ||
+                        [])) ||
+                [];
             if (!Array.isArray(saved)) saved = [];
             return { saved };
         },
+        conflicts: (id) => request("GET", `/repos/${id}/conflicts`),
+        aiSuggest: (id, filePath) =>
+            request("POST", `/repos/${id}/conflicts/ai-suggest`, { filePath }),
+        resolve: (id, resolution) =>
+            request("POST", `/repos/${id}/conflicts/resolve`, resolution),
+        abortMerge: (id) => request("POST", `/repos/${id}/merge/abort`),
     },
     branches: {
         list: (id, params) => request("GET", `/repos/${id}/branches${qs(params)}`),
         create: (id, body) => request("POST", `/repos/${id}/branches`, body),
         switch: (id, name) => request("POST", `/repos/${id}/branches/switch`, { name }),
+        delete: (id, branchName) =>
+            request("DELETE", `/repos/${id}/branches/${branchName}`),
+    },
+    pullRequests: {
+        create: (repoId, payload) =>
+            request("POST", `/repos/${repoId}/pull-requests`, payload),
+        list: (repoId) => request("GET", `/repos/${repoId}/pull-requests`),
+        get: (repoId, prId) =>
+            request("GET", `/repos/${repoId}/pull-requests/${prId}`),
+        merge: (repoId, prId) =>
+            request("POST", `/repos/${repoId}/pull-requests/${prId}/merge`),
+        close: (repoId, prId) =>
+            request("POST", `/repos/${repoId}/pull-requests/${prId}/close`),
+        diff: (repoId, prId) =>
+            request("GET", `/repos/${repoId}/pull-requests/${prId}/diff`),
+        createReview: (repoId, prId, payload) =>
+            request("POST", `/repos/${repoId}/pull-requests/${prId}/reviews`, payload),
+        listReviews: (repoId, prId) =>
+            request("GET", `/repos/${repoId}/pull-requests/${prId}/reviews`),
     },
     request,
 };
+
+api.users = api.users || {
+    search: (params) => api.user.search(params),
+};
+
+api.auth.clearToken = api.auth.clearToken || (() => clearToken());
+
+api.auth.setToken = api.auth.setToken || ((t) => setToken(t));

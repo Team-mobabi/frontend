@@ -14,6 +14,10 @@ const initial = {
     animationTick: 0,
     transferSnapshot: null,
     eventLog: [],
+    conflictInfo: { open: false },
+    currentView: "graph",
+    prList: [],
+    selectedPrId: null, // [신규] 현재 보고있는 PR ID
 };
 
 function reducer(state, action) {
@@ -24,7 +28,8 @@ function reducer(state, action) {
             return { ...state, repositories: action.payload };
         case "SELECT_REPO":
             if (action.payload) try { localStorage.setItem(LS_KEY, String(action.payload)); } catch {}
-            return { ...state, selectedRepoId: action.payload, stagingArea: [], workingDirectory: [] };
+            // 레포 변경 시 PR 관련 상태 초기화
+            return { ...state, selectedRepoId: action.payload, stagingArea: [], workingDirectory: [], currentView: "graph", prList: [], selectedPrId: null };
         case "ADD_SELECTED":
             return { ...state, stagingArea: Array.from(new Set([...(state.stagingArea||[]), ...action.payload])) };
         case "REMOVE_FROM_STAGING":
@@ -47,6 +52,21 @@ function reducer(state, action) {
                 repositories: state.repositories.filter(repo => repoIdOf(repo) !== action.payload),
                 selectedRepoId: state.selectedRepoId === action.payload ? null : state.selectedRepoId,
             };
+        case "OPEN_CONFLICT_MODAL":
+            return { ...state, conflictInfo: { open: true } };
+        case "CLOSE_CONFLICT_MODAL":
+            return { ...state, conflictInfo: { open: false } };
+
+        case "SET_VIEW":
+            // PR 목록 뷰로 갈 때, 선택된 PR ID 초기화
+            return { ...state, currentView: action.payload, selectedPrId: action.payload === 'prs' ? null : state.selectedPrId };
+        case "SET_PRS":
+            return { ...state, prList: action.payload };
+
+        // [신규] PR 상세 뷰로 이동
+        case "SELECT_PR":
+            return { ...state, currentView: 'pr_detail', selectedPrId: action.payload };
+
         default:
             return state;
     }
@@ -56,7 +76,6 @@ export function GitProvider({ children }) {
     const [state, dispatch] = useReducer(reducer, initial);
 
     useEffect(() => {
-        // 앱 시작 시 마지막 선택 레포 복원
         try {
             const saved = localStorage.getItem(LS_KEY);
             if (saved) dispatch({ type: "SELECT_REPO", payload: saved });

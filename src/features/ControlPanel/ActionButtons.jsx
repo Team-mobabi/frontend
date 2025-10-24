@@ -3,10 +3,12 @@ import { useGit } from "../../features/GitCore/GitContext";
 import { api } from "../../features/API";
 import AddModal from "./AddModal";
 import StagingSummary from "./StagingSummary";
-import RemoteConnectModal from "./RemoteConnectModal";
+import RemoteConnectModal from "../../components/Modal/RemoteConnectModal.jsx";
+import PushConfirmModal from "../../components/Modal/PushConfirmModal";
 
 const STEP_LABEL = { 1: "원격에서 받아오기", 2: "파일 담기", 3: "메시지 쓰고 저장", 4: "원격으로 올리기" };
 
+// --- Helper Functions ---
 function normalizeBranchList(input) {
     if (!input) return ["main"];
     if (!Array.isArray(input) && Array.isArray(input.branches)) { return normalizeBranchList(input.branches); }
@@ -44,6 +46,7 @@ function summarizeFiles(commits) {
     return Array.from(new Set(commits.flatMap(c => fileListOf(c)).map(String)));
 }
 
+// --- Component ---
 export default function ActionButtons() {
     const { state, dispatch } = useGit();
     const repoId = state.selectedRepoId;
@@ -60,9 +63,12 @@ export default function ActionButtons() {
     const [remoteModalOpen, setRemoteModalOpen] = useState(false);
     const [retryPushBranch, setRetryPushBranch] = useState(null);
 
+    const [pushConfirmOpen, setPushConfirmOpen] = useState(false);
+    const [commitsToPush, setCommitsToPush] = useState([]);
+
+    // --- Effects ---
     useEffect(() => {
         if (repoId) {
-            setStep(1);
             setMsg("");
             setPullOpen(false);
             setPushOpen(false);
@@ -71,21 +77,72 @@ export default function ActionButtons() {
 
     useEffect(() => {
         if (repoId) {
-            api.repos.status(repoId).then(st => setNeedsInitialPush(st.isEmpty)).catch(() => setNeedsInitialPush(true));
-            api.branches.list(repoId).then(list => {
-                const branches = normalizeBranchList(list);
-                setBranches(branches);
-                if (!branches.includes(selBranch)) {
-                    setSelBranch(branches[0] || "main");
+            // [수정] status, graph, branches를 모두 가져와서 정확한 step을 판단
+            Promise.all([
+                api.repos.status(repoId),
+                api.repos.graph(repoId),
+                api.branches.list(repoId)
+            ]).then(([st, graph, list]) => {
+
+                // 1. 브랜치 목록 설정
+                const fetchedBranches = normalizeBranchList(list);
+                setBranches(fetchedBranches);
+                let currentBranch = selBranch;
+                if (!fetchedBranches.includes(selBranch)) {
+                    currentBranch = fetchedBranches[0] || "main";
+                    setSelBranch(currentBranch);
                 }
+
+                // 2. 상태 및 그래프 데이터로 step 결정
+                setNeedsInitialPush(st.isEmpty);
+                const stagedFiles = Array.isArray(st?.files) ? st.files : [];
+
+                // [수정] 현재 브랜치 기준으로 푸시할 커밋 계산
+                const localCommitsToPush = findMissingCommits(graph, currentBranch, "push");
+
+                // 3. Step 우선순위 결정
+                if (stagedFiles.length > 0) {
+                    // 1순위: Staging Area에 파일이 있으면 -> Step 3 (Commit)
+                    console.log("Status Check: Staging Area has files, setting step to 3.");
+                    setStep(3);
+                    const stagedFileNames = stagedFiles.map(f => f.path || f.file || f.name || String(f));
+                    dispatch({ type: "ADD_SELECTED", payload: stagedFileNames });
+                } else if (localCommitsToPush.length > 0) {
+                    // 2순위: 푸시할 로컬 커밋이 있으면 -> Step 4 (Push)
+                    console.log("Status Check: Local commits found, setting step to 4 (Push).");
+                    setStep(4);
+                } else if (st.isEmpty) {
+                    // 3순위: 레포가 비어있으면 -> Step 2 (Add)
+                    console.log("Status Check: Repository is empty, setting step to 2.");
+                    setStep(2);
+                } else {
+                    // 4순위: 모두 깨끗하면 -> Step 1 (Pull)
+                    console.log("Status Check: Clean, setting step to 1 (Pull).");
+                    setStep(1);
+                }
+
+            }).catch((err) => {
+                console.error("Status Check: Failed to fetch repo data:", err);
+                setNeedsInitialPush(true);
+                setStep(1); // 에러 시 기본값
+                // 브랜치 목록이라도 가져오기 (Fallback)
+                api.branches.list(repoId).then(list => {
+                    const fetchedBranches = normalizeBranchList(list);
+                    setBranches(fetchedBranches);
+                }).catch(() => setBranches(["main"]));
             });
         }
-    }, [repoId, state.graphVersion]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [repoId, state.graphVersion, dispatch]); // selBranch 의존성 제거 (루프 방지)
 
+    // --- Handlers ---
     const fail = (e, fb) => setToast(e?.message || fb || "오류가 발생했어요.");
+
     const guard = (targetStep, fn) => {
         if (!repoId) return setToast("레포지토리를 먼저 선택해주세요.");
-        if (step !== targetStep && !needsInitialPush) return setToast(`먼저 “${STEP_LABEL[step]}”를 진행해주세요!`);
+        if (step !== targetStep && !(needsInitialPush && targetStep === 2 && step === 1)) {
+            return setToast(`먼저 “${STEP_LABEL[step]}”를 진행해주세요!`);
+        }
         if (busy) return;
         fn();
     };
@@ -97,22 +154,30 @@ export default function ActionButtons() {
         try {
             const isFileUpload = selection[0] instanceof File;
             let stagedNames = [];
+
             if (isFileUpload) {
                 const uploadResult = await api.repos.upload(repoId, selection);
-                const uploadedFileNames = uploadResult?.saved || [];
-                if (uploadedFileNames.length > 0) await api.repos.add(repoId, uploadedFileNames);
+                const uploadedFileNames = Array.isArray(uploadResult?.saved) ? uploadResult.saved : [];
+                if (uploadedFileNames.length > 0) {
+                    await api.repos.add(repoId, uploadedFileNames);
+                }
                 stagedNames = uploadedFileNames;
             } else {
                 await api.repos.add(repoId, selection);
                 stagedNames = selection;
             }
+
             if (stagedNames.length > 0) {
                 dispatch({ type: "ADD_SELECTED", payload: stagedNames });
                 dispatch({ type: "SET_ANIMATION_START", payload: "add" });
                 setStep(3);
                 setToast(`${stagedNames.length}개 파일을 담았어요.`);
+            } else {
+                setToast("파일은 담겼으나, staged 목록이 비어있습니다.");
             }
-        } catch (e) { fail(e, "파일 담기에 실패했어요."); }
+        } catch (e) {
+            fail(e, "파일 담기에 실패했어요.");
+        }
         finally { setBusy(false); }
     };
 
@@ -127,7 +192,7 @@ export default function ActionButtons() {
                 dispatch({ type: "COMMIT_SUCCESS", message: text });
                 setMsg("");
                 setStep(4);
-                if(needsInitialPush) setNeedsInitialPush(false);
+                if (needsInitialPush) setNeedsInitialPush(false);
             } catch (e) {
                 fail(e, "버전 저장에 실패했어요.");
                 dispatch({ type: "SET_ANIMATION_END" });
@@ -138,33 +203,69 @@ export default function ActionButtons() {
     };
 
     const handlePush = async (branchName) => {
-        setBusy(true);
         setPushOpen(false);
         try {
             await api.branches.switch(repoId, branchName);
             const graph = await api.repos.graph(repoId);
             const transfer = findMissingCommits(graph, branchName, "push");
-            if (transfer.length > 0) {
-                const payload = { type: "push", branch: branchName, commits: transfer, files: summarizeFiles(transfer) };
-                dispatch({ type: "SET_TRANSFER", payload });
-                dispatch({ type: "SET_ANIMATION_START", payload: "push" });
-            }
-            await api.repos.push(repoId, { branch: branchName });
-            setTimeout(() => {
-                setStep(1);
-                setToast("원격으로 올렸어요.");
-            }, 600);
+            setCommitsToPush(transfer);
+            setPushConfirmOpen(true);
         } catch (e) {
-            if (e.message?.includes("리모트") || e.message?.includes("No such device or address")) {
+            if (e.message?.includes("리모트") || e.message?.includes("No such device or address") || e.message?.includes("Could not resolve host")) {
                 setToast("원격 저장소 주소를 먼저 연결해야 합니다.");
                 setRetryPushBranch(branchName);
                 setRemoteModalOpen(true);
             } else {
-                fail(e, "올리기에 실패했어요.");
+                fail(e, `'${branchName}' 브랜치 정보를 가져오는 중 오류 발생`);
             }
+        }
+    };
+
+    const executePush = async (branchName) => {
+        setPushConfirmOpen(false);
+        setBusy(true);
+        dispatch({ type: "SET_ANIMATION_START", payload: "push" });
+
+        const payload = { type: "push", branch: branchName, commits: commitsToPush, files: summarizeFiles(commitsToPush) };
+        dispatch({ type: "SET_TRANSFER", payload });
+
+        try {
+            await api.repos.push(repoId, { branch: branchName });
+
+            setTimeout(() => {
+                setStep(1);
+                setToast("원격으로 올렸어요.");
+                dispatch({ type: "GRAPH_DIRTY" });
+                setCommitsToPush([]);
+                setBusy(false);
+            }, 600);
+
+        } catch (e) {
             dispatch({ type: "SET_ANIMATION_END" });
-        } finally {
-            setBusy(false);
+
+            if (e.message?.includes("does not exist on remote") || e.message?.includes("no upstream")) {
+                if (window.confirm(`'${branchName}' 브랜치가 원격 저장소에 없습니다.\n새 브랜치로 '게시(Publish)'하시겠습니까?`)) {
+                    try {
+                        setBusy(true);
+                        await api.repos.push(repoId, { branch: branchName, setUpstream: true });
+                        setTimeout(() => {
+                            setStep(1);
+                            setToast(`'${branchName}' 브랜치를 원격에 게시했습니다.`);
+                            dispatch({ type: "GRAPH_DIRTY" });
+                            setBusy(false);
+                        }, 600);
+                    } catch (pushErr) {
+                        fail(pushErr, "브랜치 게시에 실패했습니다.");
+                        setBusy(false);
+                    }
+                } else {
+                    setBusy(false);
+                }
+            } else {
+                fail(e, "올리기에 실패했어요.");
+                setBusy(false);
+            }
+            setCommitsToPush([]);
         }
     };
 
@@ -175,25 +276,30 @@ export default function ActionButtons() {
             await api.branches.switch(repoId, branchName);
             const graph = await api.repos.graph(repoId);
             const transfer = findMissingCommits(graph, branchName, "pull");
-            if (transfer.length > 0) {
-                const payload = { type: "pull", branch: branchName, commits: transfer, files: summarizeFiles(transfer) };
-                dispatch({ type: "SET_TRANSFER", payload });
-                dispatch({ type: "SET_ANIMATION_START", payload: "pull" });
-            }
-            await api.repos.pull(repoId, { branch: branchName });
-            setTimeout(() => {
-                setStep(2);
-                setToast("원격에서 받아왔어요.");
-            }, 600);
-        } catch (e) {
-            if (e?.status === 409) {
-                if (e.message?.includes("empty or branch does not exist")) {
-                    setToast("원격 저장소가 비어있습니다. '파일 담기'부터 시작해주세요!");
-                    setNeedsInitialPush(true);
-                    setStep(2);
-                } else {
-                    setToast("로컬에 푸시하지 않은 변경사항이 있습니다. 먼저 'Push'를 시도해주세요!");
+            const pullResult = await api.repos.pull(repoId, { branch: branchName });
+
+            if (pullResult?.hasConflict) {
+                setToast("충돌이 발생했습니다! AI가 해결책을 제안합니다.");
+                dispatch({ type: "OPEN_CONFLICT_MODAL" });
+            } else {
+                if (transfer.length > 0) {
+                    const payload = { type: "pull", branch: branchName, commits: transfer, files: summarizeFiles(transfer) };
+                    dispatch({ type: "SET_TRANSFER", payload });
+                    dispatch({ type: "SET_ANIMATION_START", payload: "pull" });
                 }
+                setTimeout(() => {
+                    setStep(2);
+                    setToast("원격에서 받아왔어요.");
+                    dispatch({ type: "GRAPH_DIRTY" });
+                }, 600);
+            }
+        } catch (e) {
+            if (e.message?.includes("커밋되지 않은 변경사항") || e.message?.includes("Uncommitted Changes")) {
+                setToast("커밋되지 않은 변경사항이 있습니다. 먼저 커밋하거나 stash 해주세요.");
+            } else if (e?.status === 409 && e.message?.includes("empty or branch does not exist")) {
+                setToast("원격 저장소가 비어있거나 브랜치가 없습니다. '파일 담기'부터 시작해주세요!");
+                setNeedsInitialPush(true);
+                setStep(2);
             } else {
                 fail(e, "받아오기에 실패했어요.");
             }
@@ -216,10 +322,36 @@ export default function ActionButtons() {
             await api.branches.create(repoId, { name: finalName, from: selBranch });
             setToast(`'${finalName}' 브랜치를 만들었습니다!`);
             setSelBranch(finalName);
-            setBranches(prev => [...prev, finalName]);
+            setBranches(prev => [...prev, finalName].sort());
             dispatch({ type: "GRAPH_DIRTY" });
         } catch (e) {
             fail(e, "브랜치 생성에 실패했어요.");
+        } finally {
+            setBusy(false);
+        }
+    };
+
+    const handleDeleteBranch = async (branchName) => {
+        setPullOpen(false);
+        if (branchName === 'main') {
+            setToast("'main' 브랜치는 삭제할 수 없습니다.");
+            return;
+        }
+        if (!window.confirm(`'${branchName}' 브랜치를 정말로 삭제하시겠습니까?`)) {
+            return;
+        }
+        setBusy(true);
+        try {
+            await api.branches.delete(repoId, branchName);
+            setToast(`'${branchName}' 브랜치를 삭제했습니다.`);
+            setBranches(prev => prev.filter(b => b !== branchName));
+            if (selBranch === branchName) {
+                setSelBranch('main');
+                await api.branches.switch(repoId, 'main');
+            }
+            dispatch({ type: "GRAPH_DIRTY" });
+        } catch (e) {
+            fail(e, "브랜치 삭제에 실패했어요.");
         } finally {
             setBusy(false);
         }
@@ -234,11 +366,14 @@ export default function ActionButtons() {
         }
     };
 
-    const lock1 = step !== 1;
-    const lock2 = step !== 2;
-    const lock3 = step !== 3;
-    const lock4 = step !== 4;
+    // --- Button Locks ---
+    const lock1 = step !== 1 || busy;
+    const lock2 = step !== 2 || busy;
+    const lock3 = step !== 3 || busy;
+    const lock4 = step !== 4 || busy;
+    const isCommitDisabled = lock3 || !msg.trim();
 
+    // --- Render ---
     return (
         <>
             <div className="panel">
@@ -255,7 +390,25 @@ export default function ActionButtons() {
                             <button className="btn btn-split-trigger" onClick={() => guard(1, () => setPullOpen(!pullOpen))} disabled={lock1}>▼</button>
                             {pullOpen && !lock1 && (
                                 <div className="combo-menu">
-                                    {branches.map((b) => (<button key={b} className={`combo-item ${b === selBranch ? "active" : ""}`} onClick={() => { setSelBranch(b); setPullOpen(false); }}>{b}</button>))}
+                                    {branches.map((b) => (
+                                        <div key={b} className="combo-item-wrap">
+                                            <button
+                                                className={`combo-item ${b === selBranch ? "active" : ""}`}
+                                                onClick={() => { setSelBranch(b); setPullOpen(false); }}
+                                            >
+                                                {b}
+                                            </button>
+                                            {b !== 'main' && (
+                                                <button
+                                                    className="combo-item-delete"
+                                                    title={`${b} 삭제`}
+                                                    onClick={() => handleDeleteBranch(b)}
+                                                >
+                                                    🗑️
+                                                </button>
+                                            )}
+                                        </div>
+                                    ))}
                                     <div style={{ borderTop: '1px solid var(--line)', margin: '4px 0' }} />
                                     <button className="combo-item" onClick={handleCreateBranch}>+ 새 브랜치 만들기...</button>
                                 </div>
@@ -263,9 +416,11 @@ export default function ActionButtons() {
                         </div>
                     )}
 
-                    <button className={`btn ${lock2 ? "btn-locked" : ""}`} onClick={() => guard(2, () => setOpenAdd(true))}>파일 담기</button>
-                    <input className="input" placeholder="커밋 메시지" value={msg} onChange={(e) => setMsg(e.target.value)} readOnly={lock3} />
-                    <button className={`btn btn-success ${lock3 || !msg.trim() ? "btn-locked" : ""}`} onClick={() => guard(3, handleCommit)}>버전 저장</button>
+                    <button className={`btn ${lock2 ? "btn-locked" : ""}`} onClick={() => guard(2, () => setOpenAdd(true))} disabled={lock2}>파일 담기</button>
+
+                    <input className="input" placeholder="커밋 메시지" value={msg} onChange={(e) => setMsg(e.target.value)} readOnly={lock3} disabled={lock3}/>
+
+                    <button className={`btn btn-success ${isCommitDisabled ? "btn-locked" : ""}`} onClick={() => guard(3, handleCommit)} disabled={isCommitDisabled}>버전 저장</button>
 
                     <div className={`btn-split-wrap primary ${lock4 ? 'locked' : ''}`}>
                         <button className="btn btn-primary btn-split-action" onClick={() => guard(4, () => handlePush(selBranch))} disabled={lock4}>
@@ -279,15 +434,30 @@ export default function ActionButtons() {
                         )}
                     </div>
                 </div>
+
                 <StagingSummary files={state.stagingArea} onRemove={(name) => dispatch({ type: "REMOVE_FROM_STAGING", payload: name })}/>
             </div>
-            <AddModal open={openAdd} onCancel={() => setOpenAdd(false)} onConfirm={handleAddConfirm} />
+
+            <AddModal open={openAdd} onCancel={() => setOpenAdd(false)} onConfirm={handleAddConfirm} staged={state.stagingArea} />
             <RemoteConnectModal
                 open={remoteModalOpen}
                 repoId={repoId}
                 onClose={() => setRemoteModalOpen(false)}
                 onConnected={handleRemoteConnected}
             />
+
+            <PushConfirmModal
+                open={pushConfirmOpen}
+                onClose={() => setPushConfirmOpen(false)}
+                onConfirm={() => executePush(selBranch)}
+                branch={selBranch}
+                commits={commitsToPush}
+            />
+
+            {toast && <div style={{ position: 'fixed', bottom: '20px', left: '50%', transform: 'translateX(-50%)', background: 'rgba(0,0,0,0.7)', color: 'white', padding: '10px 20px', borderRadius: '8px', zIndex: 1000 }}>
+                {toast}
+                <button onClick={() => setToast('')} style={{ marginLeft: '10px', background: 'none', border: 'none', color: 'white', cursor: 'pointer' }}>X</button>
+            </div>}
         </>
     );
 }

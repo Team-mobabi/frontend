@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useGit } from "../../features/GitCore/GitContext.jsx";
 import { repoIdOf } from "../../features/GitCore/repoUtils.js";
-import CreateRepoModal from "../Layout/CreateRepoModal";
+import CreateRepoModal from "../Modal/CreateRepoModal.jsx";
 import { api } from "../../features/API.js";
 
 export default function Sidebar() {
