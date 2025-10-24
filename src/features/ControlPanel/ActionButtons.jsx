@@ -77,14 +77,13 @@ export default function ActionButtons() {
 
     useEffect(() => {
         if (repoId) {
-            // [수정] status, graph, branches를 모두 가져와서 정확한 step을 판단
+            console.log("Repo changed, running initial status check..."); // 상태 확인 로그
             Promise.all([
                 api.repos.status(repoId),
                 api.repos.graph(repoId),
                 api.branches.list(repoId)
             ]).then(([st, graph, list]) => {
 
-                // 1. 브랜치 목록 설정
                 const fetchedBranches = normalizeBranchList(list);
                 setBranches(fetchedBranches);
                 let currentBranch = selBranch;
@@ -93,30 +92,23 @@ export default function ActionButtons() {
                     setSelBranch(currentBranch);
                 }
 
-                // 2. 상태 및 그래프 데이터로 step 결정
                 setNeedsInitialPush(st.isEmpty);
                 const stagedFiles = Array.isArray(st?.files) ? st.files : [];
 
-                // [수정] 현재 브랜치 기준으로 푸시할 커밋 계산
                 const localCommitsToPush = findMissingCommits(graph, currentBranch, "push");
 
-                // 3. Step 우선순위 결정
                 if (stagedFiles.length > 0) {
-                    // 1순위: Staging Area에 파일이 있으면 -> Step 3 (Commit)
                     console.log("Status Check: Staging Area has files, setting step to 3.");
                     setStep(3);
                     const stagedFileNames = stagedFiles.map(f => f.path || f.file || f.name || String(f));
                     dispatch({ type: "ADD_SELECTED", payload: stagedFileNames });
                 } else if (localCommitsToPush.length > 0) {
-                    // 2순위: 푸시할 로컬 커밋이 있으면 -> Step 4 (Push)
                     console.log("Status Check: Local commits found, setting step to 4 (Push).");
                     setStep(4);
                 } else if (st.isEmpty) {
-                    // 3순위: 레포가 비어있으면 -> Step 2 (Add)
                     console.log("Status Check: Repository is empty, setting step to 2.");
                     setStep(2);
                 } else {
-                    // 4순위: 모두 깨끗하면 -> Step 1 (Pull)
                     console.log("Status Check: Clean, setting step to 1 (Pull).");
                     setStep(1);
                 }
@@ -124,16 +116,16 @@ export default function ActionButtons() {
             }).catch((err) => {
                 console.error("Status Check: Failed to fetch repo data:", err);
                 setNeedsInitialPush(true);
-                setStep(1); // 에러 시 기본값
-                // 브랜치 목록이라도 가져오기 (Fallback)
+                setStep(1);
                 api.branches.list(repoId).then(list => {
                     const fetchedBranches = normalizeBranchList(list);
                     setBranches(fetchedBranches);
                 }).catch(() => setBranches(["main"]));
             });
         }
+        // [수정] state.graphVersion 의존성 제거!
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [repoId, state.graphVersion, dispatch]); // selBranch 의존성 제거 (루프 방지)
+    }, [repoId, dispatch]);
 
     // --- Handlers ---
     const fail = (e, fb) => setToast(e?.message || fb || "오류가 발생했어요.");
@@ -269,6 +261,7 @@ export default function ActionButtons() {
         }
     };
 
+    // [수정] handlePull 함수에 로그 추가
     const handlePull = async (branchName) => {
         setBusy(true);
         setPullOpen(false);
@@ -276,12 +269,17 @@ export default function ActionButtons() {
             await api.branches.switch(repoId, branchName);
             const graph = await api.repos.graph(repoId);
             const transfer = findMissingCommits(graph, branchName, "pull");
+
+            console.log(`[ActionButtons] Pull API 호출 (${branchName})...`); // 로그 1
             const pullResult = await api.repos.pull(repoId, { branch: branchName });
+            console.log("[ActionButtons] Pull API 결과:", pullResult); // 로그 2
 
             if (pullResult?.hasConflict) {
+                console.log("[ActionButtons] 충돌 감지됨! 충돌 해결 모달을 엽니다."); // 로그 3
                 setToast("충돌이 발생했습니다! AI가 해결책을 제안합니다.");
                 dispatch({ type: "OPEN_CONFLICT_MODAL" });
             } else {
+                console.log("[ActionButtons] 충돌 없음. Step 2로 이동합니다."); // 로그 4
                 if (transfer.length > 0) {
                     const payload = { type: "pull", branch: branchName, commits: transfer, files: summarizeFiles(transfer) };
                     dispatch({ type: "SET_TRANSFER", payload });
@@ -294,6 +292,7 @@ export default function ActionButtons() {
                 }, 600);
             }
         } catch (e) {
+            console.error("[ActionButtons] Pull 실패:", e); // 로그 5
             if (e.message?.includes("커밋되지 않은 변경사항") || e.message?.includes("Uncommitted Changes")) {
                 setToast("커밋되지 않은 변경사항이 있습니다. 먼저 커밋하거나 stash 해주세요.");
             } else if (e?.status === 409 && e.message?.includes("empty or branch does not exist")) {

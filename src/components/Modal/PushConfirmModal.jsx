@@ -1,5 +1,11 @@
 import React from 'react';
 
+// 간단한 시간 포맷 함수 (필요시 라이브러리 사용)
+function formatTimeAgo(dateString) {
+    // ... (시간 표시 로직 구현) ...
+    return dateString; // 임시
+}
+
 export default function PushConfirmModal({ open, onClose, onConfirm, branch, commits = [] }) {
     if (!open) return null;
 
@@ -21,6 +27,7 @@ export default function PushConfirmModal({ open, onClose, onConfirm, branch, com
                                     <div className="push-hash" title={commit.hash}>{commit.hash.substring(0, 7)}</div>
                                     <div className="push-msg">{commit.message}</div>
                                     <div className="push-author">{commit.author}</div>
+                                    {/* <div className="push-time">{formatTimeAgo(commit.committedAt)}</div> */}
                                 </div>
                             ))
                         )}

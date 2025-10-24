@@ -2,7 +2,7 @@ import React, {useEffect, useMemo, useRef, useState} from "react";
 import {api} from "../../features/API";
 import {useGit} from "../GitCore/GitContext.jsx";
 
-// ... (파일 상단의 toArray, nameOf, uniq, candidatesFromStatus 함수들은 그대로 유지) ...
+// --- Helper Functions ---
 function toArray(x) {
     if (!x) return [];
     return Array.isArray(x) ? x : [x]
@@ -22,7 +22,7 @@ function uniq(arr) {
             out.push(k)
         }
     }
-    return out; // 'uniq(pool)' -> 'out' 으로 수정 (무한 재귀 오류 수정)
+    return out;
 }
 function candidatesFromStatus(st) {
     const pool = [];
@@ -33,12 +33,10 @@ function candidatesFromStatus(st) {
             if (n) pool.push(n)
         })
     }
-    // 'st?.working?.untracked' 같이 더 구체적인 경로를 참조하는 부분이 있다면 그대로 유지 가능합니다.
-    // 여기서는 제공된 코드의 uniq(pool)만 수정했습니다.
     return uniq(pool);
 }
 
-
+// --- Component ---
 export default function AddModal({open, onCancel, onConfirm, workingDirectory = "", staged = []}) {
     const {state} = useGit();
     const repoId = useMemo(() => state?.selectedRepoId == null ? "" : String(state.selectedRepoId).trim(), [state?.selectedRepoId]);
@@ -51,9 +49,7 @@ export default function AddModal({open, onCancel, onConfirm, workingDirectory = 
     const [selected, setSelected] = useState(new Set(staged.map(String)));
     const [q, setQ] = useState("");
 
-    // ▼▼▼ 수정된 부분 (파일 선택 탭 관련 state 간소화) ▼▼▼
-    const [pickedFiles, setPickedFiles] = useState([]); // File 객체를 담을 state
-    // ▲▲▲ 수정된 부분 ▲▲▲
+    const [pickedFiles, setPickedFiles] = useState([]);
     const inputRef = useRef(null);
 
     useEffect(() => {
@@ -66,7 +62,7 @@ export default function AddModal({open, onCancel, onConfirm, workingDirectory = 
         setErr("");
         setQ("");
         setSelected(new Set(staged.map(String)));
-        setPickedFiles([]); // 초기화
+        setPickedFiles([]);
         setTab("status");
         loadStatus();
     }
@@ -109,13 +105,16 @@ export default function AddModal({open, onCancel, onConfirm, workingDirectory = 
     async function copyPath() {
         try {
             await navigator.clipboard.writeText(String(workingDirectory || ""));
-        } catch {
-        }
+        } catch {}
     }
 
     function onFilePick(e) {
         const list = Array.from(e.target.files || []);
         setPickedFiles(list);
+        // input 값 초기화 (동일한 폴더/파일을 다시 선택할 수 있도록)
+        if (inputRef.current) {
+            inputRef.current.value = null;
+        }
     }
 
     function openPicker() {
@@ -125,29 +124,48 @@ export default function AddModal({open, onCancel, onConfirm, workingDirectory = 
     function onDrop(e) {
         e.preventDefault();
         const list = Array.from(e.dataTransfer?.files || []);
-        setPickedFiles(list);
+
+        // 폴더 드롭 시도 감지 (간단한 체크)
+        let hasDirectory = false;
+        try {
+            if (e.dataTransfer.items) {
+                for (let i = 0; i < e.dataTransfer.items.length; i++) {
+                    const item = e.dataTransfer.items[i];
+                    if (item.kind === 'file' && item.webkitGetAsEntry()?.isDirectory) {
+                        hasDirectory = true;
+                        break;
+                    }
+                }
+            }
+        } catch (err) { /* 무시 */ }
+
+        if (hasDirectory) {
+            setErr("폴더 끌어다 놓기는 지원되지 않습니다. '파일 / 폴더 선택' 버튼을 이용해주세요.");
+            setPickedFiles([]);
+        } else {
+            setErr("");
+            setPickedFiles(list);
+        }
     }
 
     function onDragOver(e) {
         e.preventDefault();
     }
 
-    // ▼▼▼ 수정된 부분 (통합된 확인 핸들러) ▼▼▼
     function handleConfirm() {
+        console.log("모달 확인 버튼 클릭됨!"); // 로그 추가
         if (tab === "status") {
             const pickedNames = Array.from(selected);
             if (pickedNames.length === 0) return;
-            onConfirm(pickedNames); // string[] 전달
+            onConfirm(pickedNames);
         } else if (tab === "pick") {
             if (pickedFiles.length === 0) return;
-            onConfirm(pickedFiles); // File[] 전달
+            onConfirm(pickedFiles);
         }
     }
-    // ▲▲▲ 수정된 부분 ▲▲▲
 
     if (!open) return null;
 
-    // 모달 하단 버튼의 활성화 여부 결정
     const isConfirmDisabled = tab === 'status'
         ? selected.size === 0
         : pickedFiles.length === 0;
@@ -175,11 +193,56 @@ export default function AddModal({open, onCancel, onConfirm, workingDirectory = 
 
                     {tab === "status" ? (
                         <>
-                            {/* ... ('변경된 파일' 탭의 JSX는 기존과 동일하게 유지) ... */}
+                            {/* [복원] '변경된 파일' 탭 UI */}
+                            <input
+                                className="input"
+                                placeholder="필터..."
+                                value={q}
+                                onChange={e => setQ(e.target.value)}
+                                style={{ marginBottom: 12 }}
+                            />
+                            {loading && <div><span className="spinner" /> 파일 목록 로딩 중...</div>}
+                            {err && <div style={{ color: "var(--danger)" }}>{err}</div>}
+                            {!loading && !err && (
+                                <div style={{ maxHeight: 300, overflow: "auto" }}>
+                                    {filtered.length > 0 ? (
+                                        <div className="file-list">
+                                            <div className="file-item file-item-header">
+                                                <input
+                                                    type="checkbox"
+                                                    onChange={e => toggleAll(e.target.checked)}
+                                                    checked={filtered.length > 0 && selected.size === filtered.length}
+                                                />
+                                                <span>파일 경로</span>
+                                            </div>
+                                            {filtered.map(name => (
+                                                <div key={name} className="file-item" onClick={() => toggle(name)}>
+                                                    <input
+                                                        type="checkbox"
+                                                        readOnly
+                                                        checked={selected.has(name)}
+                                                    />
+                                                    <span title={name}>{name}</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <div className="empty">변경된 파일이 없습니다.</div>
+                                    )}
+                                </div>
+                            )}
                         </>
                     ) : (
                         <>
-                            <input ref={inputRef} type="file" multiple style={{display: "none"}} onChange={onFilePick}/>
+                            {/* [수정] input 태그에 webkitdirectory 속성 추가 */}
+                            <input
+                                ref={inputRef}
+                                type="file"
+                                multiple
+                                style={{ display: "none" }}
+                                onChange={onFilePick}
+                                webkitdirectory=""
+                            />
                             <div
                                 onDrop={onDrop}
                                 onDragOver={onDragOver}
@@ -192,15 +255,22 @@ export default function AddModal({open, onCancel, onConfirm, workingDirectory = 
                                     marginBottom: 10
                                 }}
                             >
-                                <div style={{fontSize: 13, color: "var(--sub)", marginBottom: 8}}>여기로 파일을 끌어다 놓거나</div>
-                                <button className="btn" type="button" onClick={openPicker}>파일 선택</button>
+                                {/* [수정] 안내 문구 변경 */}
+                                <div style={{fontSize: 13, color: "var(--sub)", marginBottom: 8}}>여기로 파일을 끌어다 놓거나<br/>아래 버튼으로 파일 **또는 폴더**를 선택하세요.</div>
+                                <button className="btn" type="button" onClick={openPicker}>파일 / 폴더 선택</button>
                             </div>
+
+                            {/* [추가] 폴더 드롭 시 에러 메시지 표시 */}
+                            {err && <div style={{ color: "var(--danger)", marginBottom: '10px' }}>{err}</div>}
 
                             {pickedFiles.length > 0 ? (
                                 <div className="push-list" style={{maxHeight: 240, overflow: "auto"}}>
                                     {pickedFiles.map(f => (
                                         <div key={f.name + f.size + f.lastModified} className="push-row">
-                                            <div className="push-msg" title={f.name}>{f.name}</div>
+                                            {/* [수정] 폴더 선택 시 상대 경로 표시 */}
+                                            <div className="push-msg" title={f.webkitRelativePath || f.name}>
+                                                {f.webkitRelativePath || f.name}
+                                            </div>
                                             <div className="push-msg" style={{fontSize: 12, color: "var(--muted)"}}>
                                                 {(f.size / 1024).toFixed(1)} KB
                                             </div>
@@ -210,22 +280,18 @@ export default function AddModal({open, onCancel, onConfirm, workingDirectory = 
                             ) : (
                                 <div className="empty">선택된 파일이 없습니다.</div>
                             )}
-                            {/* ▼▼▼ 수정된 부분 (API 호출 버튼 제거) ▼▼▼ */}
-                            {/* API 호출은 부모 컴포넌트에서 하므로 이 버튼은 더 이상 필요 없습니다. */}
-                            {/* ▲▲▲ 수정된 부분 ▲▲▲ */}
                         </>
                     )}
                 </div>
 
-                {/* ▼▼▼ 수정된 부분 (모달 하단 버튼 통합) ▼▼▼ */}
                 <div className="modal-actions">
                     <button className="btn" onClick={onCancel} disabled={loading}>취소</button>
+                    {/* [수정] 버튼 텍스트 변경 */}
                     <button className="btn btn-primary" onClick={handleConfirm}
                             disabled={isConfirmDisabled || loading}>
-                        {tab === 'status' ? '선택한 파일 담기' : '선택한 파일 업로드하여 담기'}
+                        {tab === 'status' ? '선택한 파일 담기' : '선택한 파일/폴더 업로드하여 담기'}
                     </button>
                 </div>
-                {/* ▲▲▲ 수정된 부분 ▲▲▲ */}
             </div>
         </div>
     );
