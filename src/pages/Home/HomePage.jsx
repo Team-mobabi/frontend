@@ -4,12 +4,14 @@ import Header from "../../components/Header/Header";
 import Sidebar from "../../components/Sidebar/Sidebar";
 import ActionButtons from "../../features/ControlPanel/ActionButtons";
 import RepositoryView from "../../features/Visualization/RepositoryView";
+import DiffStatsView from "../../features/Diff/DiffStatsView";
 import Toast from "../../components/Toast/Toast";
 import ConfettiBurst from "../../components/Confetti/ConfettiBurst";
 import { useGit } from "../../features/GitCore/GitContext";
 import { api } from "../../features/API";
-import PullRequestListView from "../../features/Visualization/PullRequestListView.jsx";
-import PullRequestDetailView from "../../features/Visualization/PullRequestDetailView.jsx";
+import PullRequestListView from "../../features/Visualization/PullRequestListView";
+import PullRequestDetailView from "../../features/Visualization/PullRequestDetailView";
+import FileBrowserView from "../../features/FileBrowser/FileBrowserView";
 
 export default function HomePage(){
     const loc = useLocation();
@@ -34,22 +36,34 @@ export default function HomePage(){
                 }
             } catch {}
         })();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []); // 최초 1회
+    }, []);
 
-    // [신규] 뷰 렌더링 헬퍼 함수
     const renderCurrentView = () => {
         switch (state.currentView) {
-            case 'graph':
-                return <RepositoryView />;
-            case 'prs':
+            case "graph":
+                return (
+                    <>
+                        <DiffStatsView />
+                        <RepositoryView />
+                    </>
+                );
+            case "diff": // ★ 신규 뷰
+                return <DiffSummaryView />;
+            case "prs":
                 return <PullRequestListView />;
-            case 'pr_detail':
-                return <PullRequestDetailView />; // [신규] 상세 뷰
+            case "pr_detail":
+                return <PullRequestDetailView />;
+            case "files":
+                return <FileBrowserView />;
             default:
-                return <RepositoryView />;
+                return (
+                    <>
+                        <DiffStatsView />
+                        <RepositoryView />
+                    </>
+                );
         }
-    }
+    };
 
     return (
         <div className="home-page">
@@ -65,18 +79,25 @@ export default function HomePage(){
                 <div className="main-column">
                     <ActionButtons />
 
-                    {/* [수정] 'pr_detail' 뷰일 때는 탭을 숨기도록 수정 */}
-                    {state.currentView !== 'pr_detail' && (
+                    {state.currentView !== "pr_detail" && (
                         <div className="view-tabs">
                             <button
-                                className={`tab-btn ${state.currentView === 'graph' ? 'active' : ''}`}
-                                onClick={() => dispatch({ type: 'SET_VIEW', payload: 'graph' })}
+                                className={`tab-btn ${state.currentView === "graph" ? "active" : ""}`}
+                                onClick={() => dispatch({ type: "SET_VIEW", payload: "graph" })}
                             >
                                 그래프
                             </button>
+
                             <button
-                                className={`tab-btn ${state.currentView === 'prs' ? 'active' : ''}`}
-                                onClick={() => dispatch({ type: 'SET_VIEW', payload: 'prs' })}
+                                className={`tab-btn ${state.currentView === "files" ? "active" : ""}`}
+                                onClick={() => dispatch({ type: "SET_VIEW", payload: "files" })}
+                            >
+                                파일
+                            </button>
+
+                            <button
+                                className={`tab-btn ${state.currentView === "prs" ? "active" : ""}`}
+                                onClick={() => dispatch({ type: "SET_VIEW", payload: "prs" })}
                             >
                                 Pull Requests
                                 {state.prList.length > 0 && <span className="tab-badge">{state.prList.length}</span>}
@@ -84,7 +105,6 @@ export default function HomePage(){
                         </div>
                     )}
 
-                    {/* [수정] 헬퍼 함수로 뷰 렌더링 */}
                     {renderCurrentView()}
                 </div>
             </div>

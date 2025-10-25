@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { api } from "../../features/API.js";
 
 export default function CreateRepoModal({ open, onClose, onRepoCreated }) {
@@ -7,6 +7,15 @@ export default function CreateRepoModal({ open, onClose, onRepoCreated }) {
     const [isPrivate, setIsPrivate] = useState(false);
     const [busy, setBusy] = useState(false);
     const [err, setErr] = useState("");
+
+    useEffect(() => {
+        if (!open) {
+            setName("");
+            setDescription("");
+            setErr("");
+            setBusy(false);
+        }
+    }, [open]);
 
     if (!open) return null;
 
@@ -22,13 +31,15 @@ export default function CreateRepoModal({ open, onClose, onRepoCreated }) {
             const newRepo = await api.repos.create({
                 name: repoName,
                 description: description.trim(),
-                isPrivate: isPrivate
+                isPrivate
             });
-            const repoId = newRepo.repoId || newRepo.id;
 
-            await api.repos.connectRemoteLocal(repoId, { name: 'origin' });
+            const repoId = newRepo.repoId || newRepo.id;
+            await api.repos.connectRemoteLocal(repoId, { name: "origin" });
 
             onRepoCreated(newRepo);
+            setName("");
+            setDescription("");
             onClose();
         } catch (e) {
             setErr(e.message || "레포지토리 생성 또는 원격 연결에 실패했습니다.");
@@ -44,7 +55,7 @@ export default function CreateRepoModal({ open, onClose, onRepoCreated }) {
                     <h4>새 레포지토리 만들기</h4>
                     <button className="modal-close" onClick={onClose}>×</button>
                 </div>
-                <div className="modal-body" style={{ display: 'grid', gap: '12px' }}>
+                <div className="modal-body" style={{ display: "grid", gap: "12px" }}>
                     <input
                         className="input"
                         placeholder="레포지토리 이름 (예: my-project)"
@@ -59,9 +70,9 @@ export default function CreateRepoModal({ open, onClose, onRepoCreated }) {
                         value={description}
                         onChange={(e) => setDescription(e.target.value)}
                         disabled={busy}
-                        style={{ resize: 'vertical' }}
+                        style={{ resize: "vertical" }}
                     />
-                    {err && <div style={{ color: "var(--danger)", fontSize: 12, marginTop: 4 }}>{err}</div>}
+                    {err && <div style={{ color: "var(--danger)", fontSize: 12 }}>{err}</div>}
                 </div>
                 <div className="modal-actions">
                     <button className="btn" onClick={onClose} disabled={busy}>취소</button>

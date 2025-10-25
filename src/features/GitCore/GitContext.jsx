@@ -53,9 +53,13 @@ function reducer(state, action) {
                 selectedRepoId: state.selectedRepoId === action.payload ? null : state.selectedRepoId,
             };
         case "OPEN_CONFLICT_MODAL":
-            return { ...state, conflictInfo: { open: true } };
+            return { ...state, conflictInfo: { ...(state.conflictInfo || {}), open: true } };
         case "CLOSE_CONFLICT_MODAL":
-            return { ...state, conflictInfo: { open: false } };
+            return { ...state, conflictInfo: { ...(state.conflictInfo || {}), open: false } };
+
+        case "GRAPH_TICK": {
+            return { ...state, graphVersion: (state.graphVersion || 0) + 1};
+            }
 
         case "SET_VIEW":
             // PR 목록 뷰로 갈 때, 선택된 PR ID 초기화
