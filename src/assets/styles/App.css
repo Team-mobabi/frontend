@@ -2597,3 +2597,123 @@ input:checked + .slider:before {
         font-size: 1rem;
     }
 }
+
+/* =========================
+   14) Beginner Help Modal (Paginated)
+========================= */
+.help-modal {
+    width: min(600px, 92vw); /* 너비 유지 */
+    max-height: 80vh; /* 높이 제한 유지 */
+    display: flex; /* 내부 요소 정렬 위해 추가 */
+    flex-direction: column; /* 세로 정렬 */
+}
+
+.help-modal-head h4 {
+    color: var(--accent); /* 제목 색상 강조 */
+    font-weight: 700;
+}
+
+.help-content { /* 기존 스타일 유지 */
+    font-size: 0.9rem;
+    line-height: 1.7;
+    color: var(--sub);
+}
+
+.help-content-paginated {
+    flex-grow: 1; /* 내용 영역이 남은 공간 채우도록 */
+    overflow-y: auto; /* 내용 길면 스크롤 */
+}
+
+
+.help-content hr {
+    border: none;
+    border-top: 1px solid var(--line);
+    margin: 1.2rem 0; /* 간격 살짝 조정 */
+}
+
+.help-content h5 {
+    font-size: 1rem;
+    font-weight: 700;
+    margin-top: 0;
+    margin-bottom: 0.5rem;
+    color: var(--text); /* 제목 색상 일반 텍스트로 변경 */
+}
+
+.help-content p,
+.help-content li {
+    margin-bottom: 0.75rem; /* 문단/항목 간격 추가 */
+}
+
+.help-content ul,
+.help-content ol {
+    margin-top: 0.5rem;
+    margin-bottom: 1rem;
+    padding-left: 20px;
+}
+
+.help-content li {
+    margin-bottom: 0.4rem;
+}
+
+.help-content strong {
+    font-weight: 600;
+    color: var(--text);
+}
+
+/* 페이지네이션 스타일 */
+.help-modal-actions {
+    display: flex; /* Flexbox 사용 */
+    justify-content: space-between; /* 양쪽 끝 정렬 */
+    align-items: center; /* 세로 중앙 정렬 */
+    padding: 12px 16px; /* 패딩 조정 */
+}
+
+.page-number {
+    font-size: 0.85rem;
+    color: var(--muted);
+}
+
+.pagination-buttons {
+    display: flex;
+    gap: 8px; /* 버튼 사이 간격 */
+}
+
+.pagination-buttons .btn {
+    min-width: 80px; /* 버튼 최소 너비 */
+}
+
+/* 첫 페이지에서 '이전' 버튼 비활성화 스타일 */
+.pagination-buttons .btn:disabled {
+    background-color: var(--panel-2) !important;
+    color: var(--muted) !important;
+    cursor: not-allowed !important;
+    border-color: var(--line) !important;
+}
+
+/* =========================
+   15) Help Button
+========================= */
+.help-button {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background-color: var(--accent);
+    color: white;
+    border: none;
+    font-size: 24px;
+    font-weight: bold;
+    line-height: 48px; /* 버튼 높이와 동일하게 */
+    text-align: center;
+    cursor: pointer;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+    transition: transform 0.2s ease, background-color 0.2s ease;
+    z-index: 100; /* 다른 요소 위에 오도록 */
+}
+
+.help-button:hover {
+    background-color: #3a47c4; /* 호버 시 살짝 어둡게 */
+    transform: scale(1.1); /* 호버 시 살짝 크게 */
+}

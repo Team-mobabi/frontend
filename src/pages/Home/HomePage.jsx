@@ -14,6 +14,7 @@ import PullRequestDetailView from "../../features/Visualization/PullRequestDetai
 import FileBrowserView from "../../features/FileBrowser/FileBrowserView";
 import DiffView from "../../features/Diff/DiffView";
 import { useAuth } from "../../features/auth/AuthContext";
+import BeginnerHelp from "../BeginnerHelp"; // --- 👇 도움말 모달 import ---
 
 export default function HomePage(){
     const loc = useLocation();
@@ -22,8 +23,10 @@ export default function HomePage(){
     const { user } = useAuth();
 
     const [showWelcome, setShowWelcome] = useState(Boolean(loc.state?.welcome));
+    const [showHelpModal, setShowHelpModal] = useState(false); // --- 👇 도움말 모달 상태 추가 ---
     const username = loc.state?.username || "환영합니다!";
 
+    // ... (useEffect 코드들은 이전과 동일) ...
     useEffect(() => {
         if (loc.state?.welcome) nav(".", { replace: true, state: {} });
     }, [loc.state, nav]);
@@ -58,7 +61,9 @@ export default function HomePage(){
         })();
     }, [user, dispatch, state.selectedRepoId]);
 
+
     const renderCurrentView = () => {
+        // ... (renderCurrentView 코드는 이전과 동일) ...
         switch (state.currentView) {
             case "graph":
                 return (
@@ -100,7 +105,9 @@ export default function HomePage(){
                     <ActionButtons />
 
                     {state.currentView !== "pr_detail" && (
+                        // ... (탭 버튼 코드는 이전과 동일) ...
                         <div className="view-tabs">
+                            {/* ... 탭 버튼들 ... */}
                             <button
                                 className={`tab-btn ${state.currentView === "graph" ? "active" : ""}`}
                                 onClick={() => dispatch({ type: "SET_VIEW", payload: "graph" })}
@@ -135,6 +142,20 @@ export default function HomePage(){
                     {renderCurrentView()}
                 </div>
             </div>
+
+            {/* --- 👇 도움말 버튼 추가 --- */}
+            <button
+                className="help-button"
+                onClick={() => setShowHelpModal(true)}
+                title="도움말 보기"
+            >
+                ?
+            </button>
+
+            {/* --- 👇 도움말 모달 조건부 렌더링 --- */}
+            {showHelpModal && (
+                <BeginnerHelp onClose={() => setShowHelpModal(false)} />
+            )}
         </div>
     );
 }
