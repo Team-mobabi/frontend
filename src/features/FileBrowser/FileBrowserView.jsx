@@ -27,7 +27,11 @@ export default function FileBrowserView() {
 
         api.repos.getFiles(selectedRepoId, { path: path || undefined })
             .then((data) => {
-                setItems(data.files || []);
+                const allItems = [
+                    ...(data.folders || []),
+                    ...(data.files || [])
+                ];
+                setItems(allItems);
                 setCurrentPath(path || "");
             })
             .catch((err) => setError(err.message || "파일 목록을 불러올 수 없습니다."))
@@ -70,6 +74,38 @@ export default function FileBrowserView() {
         }
     };
 
+    // 파일/폴더 삭제
+    const handleDelete = async (item, e) => {
+        e.stopPropagation(); // 클릭 이벤트 전파 방지 (파일 열기 방지)
+
+        const itemType = item.type === "folder" ? "폴더" : "파일";
+        const confirmMessage = `정말로 이 ${itemType}을(를) 삭제하시겠습니까?\n\n${item.name}\n\n이 작업은 되돌릴 수 없습니다.`;
+
+        if (!window.confirm(confirmMessage)) {
+            return;
+        }
+
+        setLoading(true);
+        setError("");
+        try {
+            await api.repos.deleteFile(selectedRepoId, { path: item.path });
+            setToast(`${itemType} 삭제 완료: ${item.name}`);
+
+            // 현재 선택된 파일이 삭제된 경우 선택 해제
+            if (selectedFile === item.path) {
+                setSelectedFile("");
+                setFileContent("");
+            }
+
+            // 목록 새로고침
+            fetchData(currentPath);
+        } catch (e) {
+            setError(e.message || `${itemType} 삭제에 실패했습니다.`);
+        } finally {
+            setLoading(false);
+        }
+    };
+
     return (
         <div className="panel file-browser-panel">
             {/* 헤더 */}
@@ -87,7 +123,7 @@ export default function FileBrowserView() {
                     &larr; 상위 폴더
                 </button>
                 <div className="current-path">
-                    현재 경로: /<span>{currentPath || "(루트)"}</span>
+                    현재 경로: /<span>{currentPath || "최상단(root)"}</span>
                 </div>
             </div>
 
@@ -107,9 +143,28 @@ export default function FileBrowserView() {
                             key={item.path}
                             className={`file-item ${item.type} ${selectedFile === item.path ? "active" : ""}`}
                             onClick={() => handleItemClick(item)}
+                            style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}
                         >
-                            <span className="file-icon">{item.type === "folder" ? "📁" : "📄"}</span>
-                            <span className="file-name">{item.name}</span>
+                            <div style={{ display: "flex", alignItems: "center", gap: "8px", flex: 1, overflow: "hidden" }}>
+                                <span className="file-icon">{item.type === "folder" ? "📁" : "📄"}</span>
+                                <span className="file-name">{item.name}</span>
+                            </div>
+                            <button
+                                className="btn btn-ghost"
+                                onClick={(e) => handleDelete(item, e)}
+                                style={{
+                                    padding: "4px 8px",
+                                    fontSize: "12px",
+                                    color: "var(--danger)",
+                                    opacity: 0.7,
+                                    transition: "opacity 0.2s"
+                                }}
+                                onMouseEnter={(e) => e.currentTarget.style.opacity = 1}
+                                onMouseLeave={(e) => e.currentTarget.style.opacity = 0.7}
+                                title="삭제"
+                            >
+                                🗑️
+                            </button>
                         </div>
                     ))}
                 </div>

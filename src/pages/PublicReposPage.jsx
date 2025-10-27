@@ -64,7 +64,7 @@ export default function PublicReposPage() {
                 <p className="page-description">
                     다른 사용자들이 공개한 레포지토리를 둘러볼 수 있습니다.
                     <br/>
-                    **Fork 🍴** 버튼을 누르면 해당 레포지토리를 내 계정으로 복제하여 자유롭게 수정하고 관리할 수 있습니다.
+                    Fork 🍴 버튼을 누르면 해당 레포지토리를 내 계정으로 복제하여 자유롭게 수정하고 관리할 수 있습니다.
 
                 </p>
 
@@ -99,7 +99,7 @@ export default function PublicReposPage() {
                                         <p className="repo-description">{repo.description || '설명 없음'}</p>
                                         {/* [수정] 소유자 이메일 표시 */}
                                         <span className="repo-owner">
-                                            소유자: **{ownerEmail}**
+                                            소유자: {ownerEmail}
                                             {/* {ownerId && ` (${ownerId.substring(0, 8)}...)`} */}
                                         </span>
                                     </div>

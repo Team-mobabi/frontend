@@ -1,0 +1,177 @@
+.reset-modal {
+    width: 720px;
+    max-width: 90vw;
+}
+
+.reset-commit-info {
+    background: var(--bg-secondary, #f8f9fa);
+    padding: 16px;
+    border-radius: 8px;
+    margin-bottom: 24px;
+}
+
+.reset-commit-info .commit-hash,
+.reset-commit-info .commit-message {
+    margin-bottom: 8px;
+}
+
+.reset-commit-info .commit-hash:last-child,
+.reset-commit-info .commit-message:last-child {
+    margin-bottom: 0;
+}
+
+.reset-commit-info code {
+    background: var(--bg, #fff);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-family: 'Monaco', 'Courier New', monospace;
+    font-size: 0.9em;
+}
+
+.reset-mode-selector {
+    margin-top: 16px;
+}
+
+.reset-instruction {
+    font-weight: 600;
+    margin-bottom: 16px;
+    color: var(--text, #333);
+}
+
+.reset-buttons {
+    display: flex;
+    gap: 16px;
+}
+
+.reset-option {
+    flex: 1;
+    border: 2px solid var(--line, #ddd);
+    border-radius: 8px;
+    padding: 16px;
+    transition: all 0.2s ease;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.reset-option:hover {
+    border-color: var(--primary, #007bff);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.reset-option.danger:hover {
+    border-color: var(--danger, #dc3545);
+}
+
+.reset-btn {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 16px;
+    font-size: 1em;
+    background-color: white !important;
+    color: var(--text, #333) !important;
+    border: 2px solid var(--line, #ddd) !important;
+    transition: all 0.2s ease;
+}
+
+.reset-btn:hover {
+    background-color: var(--primary, #007bff) !important;
+    color: white !important;
+    border-color: var(--primary, #007bff) !important;
+}
+
+/* Soft Reset 버튼 (btn-primary) 스타일 오버라이드 */
+.reset-btn.btn-primary {
+    background-color: white !important;
+    color: var(--text, #333) !important;
+    border: 2px solid var(--line, #ddd) !important;
+}
+
+.reset-btn.btn-primary:hover {
+    background-color: var(--primary, #007bff) !important;
+    color: white !important;
+    border-color: var(--primary, #007bff) !important;
+}
+
+.reset-icon {
+    font-size: 2em;
+}
+
+.reset-title {
+    font-weight: 600;
+    font-size: 1.1em;
+}
+
+.reset-description {
+    text-align: center;
+    font-size: 0.9em;
+    color: var(--text-muted, #666);
+    line-height: 1.4;
+    margin: 0;
+}
+
+.reset-details {
+    background: var(--bg-secondary, #f8f9fa);
+    border: 2px solid var(--primary, #007bff);
+    border-radius: 8px;
+    padding: 12px;
+}
+
+.reset-option.danger .reset-details {
+    border-color: var(--danger, #dc3545);
+}
+
+.reset-details ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.reset-details li {
+    padding: 6px 0;
+    font-size: 0.9em;
+    color: var(--text, #333);
+    line-height: 1.5;
+}
+
+.reset-details li::before {
+    content: "• ";
+    color: var(--primary, #007bff);
+    font-weight: bold;
+    margin-right: 6px;
+}
+
+.reset-option.danger .reset-details li::before {
+    color: var(--danger, #dc3545);
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-8px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Hard Reset 버튼 스타일 오버라이드 */
+.reset-btn.btn-danger {
+    background-color: white !important;
+    color: var(--text, #333) !important;
+    border: 2px solid var(--line, #ddd) !important;
+}
+
+.reset-btn.btn-danger:hover {
+    background-color: #dc3545 !important;
+    color: white !important;
+    border-color: #dc3545 !important;
+}
+
+.reset-btn.btn-danger:active {
+    background-color: #c82333 !important;
+}

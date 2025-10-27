@@ -39,12 +39,49 @@ function findMissingCommits(graph, branch, direction) {
     const rb = remote?.branches?.[branch] || [];
     const lhashes = lb.map((c) => c?.hash || "");
     const rhashes = rb.map((c) => c?.hash || "");
+
     if (direction === "push") { // 서버에 올릴 커밋 찾기
-        const base = rhashes[rhashes.length - 1];
-        return base ? lb.slice(lhashes.lastIndexOf(base) + 1) : lb;
+        // 리모트의 커밋들 중 로컬에도 있는 것 찾기 (공통 조상)
+        let localBaseIndex = -1;
+        let remoteBaseIndex = -1;
+
+        for (let i = 0; i < rhashes.length; i++) {
+            const idx = lhashes.indexOf(rhashes[i]);
+            if (idx !== -1) {
+                localBaseIndex = idx;
+                remoteBaseIndex = i;
+                break; // 첫 번째로 찾은 공통 커밋 사용
+            }
+        }
+
+        // 공통 조상이 없으면 모든 로컬 커밋 push
+        if (localBaseIndex === -1) return lb;
+
+        // Remote가 Local보다 앞서 있는지 확인 (diverged)
+        const ahead = localBaseIndex; // Local의 앞선 커밋 개수
+        const behind = remoteBaseIndex; // Remote의 앞선 커밋 개수
+
+        if (behind > 0) {
+            const commits = lb.slice(0, localBaseIndex);
+            commits._diverged = true;
+            commits._behind = behind;
+            return commits;
+        }
+
+        // 정상: Local만 앞서 있음
+        return lb.slice(0, localBaseIndex);
     } else { // 서버에서 가져올 커밋 찾기
-        const base = lhashes[lhashes.length - 1];
-        return base ? rb.slice(rhashes.lastIndexOf(base) + 1) : rb;
+        // 로컬의 커밋들 중 리모트에도 있는 것 찾기 (공통 조상)
+        let baseIndex = -1;
+        for (let i = 0; i < lhashes.length; i++) {
+            const idx = rhashes.indexOf(lhashes[i]);
+            if (idx !== -1) {
+                baseIndex = idx;
+                break; // 첫 번째로 찾은 공통 커밋 사용
+            }
+        }
+        // baseIndex 이전의 커밋들이 pull할 커밋들
+        return baseIndex !== -1 ? rb.slice(0, baseIndex) : rb;
     }
 }
 
@@ -72,7 +109,9 @@ export default function ActionButtons() {
 
     const [pushConfirmOpen, setPushConfirmOpen] = useState(false); // '올리기 확인' 모달
     const [commitsToPush, setCommitsToPush] = useState([]); // 서버에 올릴 기록 목록
+    const [isDivergedPush, setIsDivergedPush] = useState(false); // Force push 필요 여부
     const [commitModalOpen, setCommitModalOpen] = useState(false); // '버전 저장 확인' 모달
+    const [hasPushableCommits, setHasPushableCommits] = useState(false); // Push 가능한 커밋 존재 여부
 
     // --- Effects ---
     useEffect(() => {
@@ -103,16 +142,25 @@ export default function ActionButtons() {
                 const stagedFiles = Array.isArray(st?.files) ? st.files : []; // '올릴 예정'인 파일 목록
                 const localCommitsToPush = findMissingCommits(graph, currentBranch, "push"); // 서버에 없는 '저장된 기록'
 
+                // 현재 브랜치가 remote에 없는지 확인 (새로 만든 브랜치인지)
+                const remoteBranches = graph?.remote?.branches || {};
+                const isNewLocalBranch = !remoteBranches[currentBranch];
+
+                // Push 가능 여부 판단 (diverged 상태여도 Force Push 가능)
+                const canPush = localCommitsToPush.length > 0 || localCommitsToPush._diverged || isNewLocalBranch;
+                setHasPushableCommits(canPush);
+
                 if (stagedFiles.length > 0) {
                     setStep(3); // '올릴 예정' 파일 있으면 -> 설명 쓰고 저장 단계
                     const stagedFileNames = stagedFiles.map(f => f.path || f.file || f.name || String(f));
                     dispatch({ type: "ADD_SELECTED", payload: stagedFileNames }); // UI에 반영
-                } else if (localCommitsToPush.length > 0) {
-                    setStep(4); // 서버에 없는 '저장된 기록' 있으면 -> 서버에 올리기 단계
+                } else if (localCommitsToPush.length > 0 && !isNewLocalBranch) {
+                    // 서버에 브랜치가 있고, 올릴 커밋이 있으면 -> 올리기 단계
+                    setStep(4);
                 } else if (st.isEmpty) {
                     setStep(2); // 프로젝트가 비어있으면 -> 파일 담기 단계부터
                 } else {
-                    setStep(1); // 그 외 -> 서버에서 가져오기 단계부터
+                    setStep(1); // 그 외 (새 브랜치 포함) -> 서버에서 가져오기 단계부터
                 }
             })
             .catch((err) => {
@@ -133,9 +181,15 @@ export default function ActionButtons() {
 
     const guard = (targetStep, fn) => {
         if (!repoId) return setToast("프로젝트 저장 공간을 먼저 선택해주세요.");
-        if (step !== targetStep && !(needsInitialPush && targetStep === 2 && step === 1)) {
+
+        // 예외: step 1에서 파일 담기(step 2) 허용 (가져오기 건너뛰기)
+        const allowSkipPull = step === 1 && targetStep === 2;
+        // 예외: Push 가능한 커밋이 있으면 올리기(step 4) 허용
+        const allowPush = targetStep === 4 && hasPushableCommits;
+
+        if (step !== targetStep && !allowSkipPull && !allowPush && !(needsInitialPush && targetStep === 2 && step === 1)) {
             // 현재 단계가 아니면 안내 메시지 표시
-            setToast(`먼저 “${STEP_LABEL[step]}” 단계를 진행해주세요!`);
+            setToast(`먼저 "${STEP_LABEL[step]}" 단계를 진행해주세요!`);
             return;
         }
         if (busy) return; // 작업 중이면 중복 실행 방지
@@ -150,6 +204,25 @@ export default function ActionButtons() {
             await api.branches.switch(repoId, branchName); // 해당 작업 버전으로 이동
             const graph = await api.repos.graph(repoId);
             const transfer = findMissingCommits(graph, branchName, "pull"); // 가져올 기록 찾기
+
+            // Diverged 상태 확인 (Local이 뒤처져 있고, Remote가 앞서 있는지)
+            const pushTransfer = findMissingCommits(graph, branchName, "push");
+            if (pushTransfer._diverged && transfer.length > 0) {
+                const behind = transfer.length;
+                const ahead = pushTransfer.length;
+
+                if (!window.confirm(
+                    `⚠️ 주의: 로컬과 원격 브랜치가 분기되었습니다.\n\n` +
+                    `로컬: ${ahead}개 커밋 앞섬 (아직 Push 안 됨)\n` +
+                    `원격: ${behind}개 커밋 앞섬\n\n` +
+                    `가져오기를 실행하면 로컬의 변경사항이 병합됩니다.\n` +
+                    `(Hard Reset을 했다면 Reset이 취소됩니다!)\n\n` +
+                    `그래도 가져오시겠습니까?`
+                )) {
+                    setBusy(false);
+                    return;
+                }
+            }
 
             const pullResult = await api.repos.pull(repoId, {branch: branchName}); // 실제 가져오기 실행
             if (pullResult?.hasConflict) {
@@ -256,10 +329,25 @@ export default function ActionButtons() {
     const handlePush = async (branchName) => {
         setPushOpen(false);
         try {
-            await api.branches.switch(repoId, branchName); // 해당 작업 버전으로 이동
+            await api.branches.switch(repoId, branchName);
             const graph = await api.repos.graph(repoId);
-            const transfer = findMissingCommits(graph, branchName, "push"); // 올릴 기록 찾기
+            const transfer = findMissingCommits(graph, branchName, "push");
+
+            const isDiverged = Boolean(transfer._diverged);
+            if (isDiverged) {
+                const behind = transfer._behind || 0;
+                if (!window.confirm(
+                    `⚠️ 경고: 원격 저장소가 로컬보다 ${behind}개의 커밋 앞서 있습니다.\n\n` +
+                    `이 상태에서 Push하면 원격의 커밋이 삭제될 수 있습니다.\n` +
+                    `일반적으로 먼저 "가져오기(Pull)"를 해야 합니다.\n\n` +
+                    `그래도 강제로 Push하시겠습니까? (Force Push)`
+                )) {
+                    return;
+                }
+            }
+
             setCommitsToPush(transfer); // 올릴 내용 상태에 저장
+            setIsDivergedPush(isDiverged); // Diverged 상태 별도 저장
             setPushConfirmOpen(true); // '올리기 확인' 모달 열기
         } catch (e) {
             // 서버 주소 연결 안 된 경우
@@ -293,7 +381,12 @@ export default function ActionButtons() {
         dispatch({ type: "SET_TRANSFER", payload });
 
         try {
-            await api.repos.push(repoId, { branch: branchName }); // 실제 올리기 실행
+            const pushPayload = {
+                branch: branchName,
+                force: isDivergedPush
+            };
+
+            await api.repos.push(repoId, pushPayload);
 
             setTimeout(() => {
                 setStep(1); // 완료 후 첫 단계로 돌아감
@@ -382,9 +475,9 @@ export default function ActionButtons() {
     // --- Button Locks ---
     // 각 단계별 버튼 활성화/비활성화 로직
     const lock1 = step !== 1 || busy; // 가져오기 버튼
-    const lock2 = step !== 2 || busy; // 파일 담기 버튼
+    const lock2 = (step !== 2 && step !== 1) || busy; // 파일 담기 버튼 (step 1에서도 허용)
     const lock3 = step !== 3 || busy; // 버전 저장 버튼
-    const lock4 = step !== 4 || busy; // 올리기 버튼
+    const lock4 = !hasPushableCommits || busy; // 올리기 버튼 (Push 가능한 커밋이 있을 때 활성화)
 
     // --- Render ---
     return (
@@ -551,6 +644,7 @@ export default function ActionButtons() {
                 onConfirm={() => executePush(selBranch)} // 확인 시 실제 올리기 실행
                 branch={selBranch} // 올릴 버전 이름 전달
                 commits={commitsToPush} // 올릴 기록 목록 전달
+                isDiverged={isDivergedPush} // Force push 필요 여부
             />
 
             <CommitConfirmModal // '버전 저장' 확인 모달

@@ -96,13 +96,32 @@ export const api = {
         getFiles: (id, params) => request("GET", `/repos/${id}/files${qs(params)}`),
         createFile: (id, payload) => request("POST", `/repos/${id}/files`, payload),
         updateFile: (id, payload) => request("PATCH", `/repos/${id}/files`, payload),
-        deleteFile: (id, payload) => request("DELETE", `/repos/${id}/files`, payload),
+        deleteFile: (id, params) => request("DELETE", `/repos/${id}/files${qs(params)}`),
         upload: async (id, fileList) => {
             const fd = new FormData();
-            for (const f of fileList) fd.append("files", f, f.webkitRelativePath || f.name);
+            console.log('[API] 업로드할 파일 목록:', fileList);
+
+            // 각 파일을 추가하고, 경로 정보를 별도 필드로 전송
+            fileList.forEach((f, index) => {
+                const relativePath = f.webkitRelativePath || f.name;
+                console.log('[API] FormData에 추가:', {
+                    name: f.name,
+                    webkitRelativePath: f.webkitRelativePath,
+                    relativePath: relativePath
+                });
+
+                // 파일 추가 (파일명만 사용)
+                fd.append("files", f, f.name);
+
+                // 경로 정보를 별도 필드로 추가
+                fd.append("paths", relativePath);
+            });
+
             const up = await request("POST", `/repos/${id}/files`, fd);
-            let saved = (up && (up.uploadedFiles?.map(f=>f.filename) || up.saved || up.paths || up.files || [])) || [];
+            console.log('[API] 업로드 응답:', up);
+            let saved = (up && (up.uploadedFiles?.map(f=>f.path) || up.saved || up.paths || up.files || [])) || [];
             if (!Array.isArray(saved)) saved = [];
+            console.log('[API] 저장된 파일 경로:', saved);
             return { saved };
         },
         conflicts: (id) => request("GET", `/repos/${id}/conflicts`),

@@ -29,15 +29,26 @@ function makeSmoothPath(p0, p1) {
 }
 
 export default function BranchLine({ lineSegments, remote }) {
-    if (!lineSegments || typeof lineSegments !== "object") return null;
+    if (!lineSegments || typeof lineSegments !== "object") {
+        return null;
+    }
+
+    const entries = Object.entries(lineSegments);
 
     return (
-        <svg className="branch-svg">
-            {Object.entries(lineSegments).map(([key, seg]) => {
+        <svg
+            className="branch-svg"
+            width="100%"
+            height="100%"
+            style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none' }}
+        >
+            {entries.map(([key, seg]) => {
                 const pts = seg?.points;
                 if (!pts || pts.length < 2) return null;
 
                 const d = makeSmoothPath(pts[0], pts[1]);
+                if (!d) return null;
+
                 const cls = [
                     "branch-path",
                     remote ? "remote" : "",
