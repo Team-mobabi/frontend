@@ -28,6 +28,18 @@ export default function AddModal({open, onCancel, onConfirm}) {
 
     function onFilePick(e) {
         const list = Array.from(e.target.files || []);
+        console.log('[AddModal] 선택된 파일:', list);
+        console.log('[AddModal] webkitdirectory 속성:', e.target.webkitdirectory);
+
+        // 각 파일의 webkitRelativePath 확인
+        list.forEach((f, idx) => {
+            console.log(`[AddModal] 파일 ${idx + 1}:`, {
+                name: f.name,
+                webkitRelativePath: f.webkitRelativePath,
+                size: f.size
+            });
+        });
+
         setPickedFiles(list);
 
         if (e.target.webkitdirectory) {
@@ -105,7 +117,7 @@ export default function AddModal({open, onCancel, onConfirm}) {
                             multiple
                             style={{ display: "none" }}
                             onChange={onFilePick}
-                            webkitdirectory=""
+                            {...({ webkitdirectory: "", directory: "", mozdirectory: "" })}
                         />
                         <div
                             onDrop={onDrop}

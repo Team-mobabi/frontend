@@ -469,15 +469,14 @@ body {
 .branch-path {
     stroke-linecap: round;
     fill: none;
-    stroke: var(--accent);
     stroke-width: 2.4;
     transition: d .6s ease, stroke .2s ease;
 }
 
 .branch-path.remote {
-    stroke: #9aa3b2 !important;
     opacity: .55;
     stroke-dasharray: 4 5
+    /* stroke는 inline에서 적용 - remote도 브랜치별 색상 유지 */
 }
 
 .branch-path.is-merge {
