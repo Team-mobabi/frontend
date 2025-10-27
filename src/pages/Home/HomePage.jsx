@@ -12,11 +12,14 @@ import { api } from "../../features/API";
 import PullRequestListView from "../../features/Visualization/PullRequestListView";
 import PullRequestDetailView from "../../features/Visualization/PullRequestDetailView";
 import FileBrowserView from "../../features/FileBrowser/FileBrowserView";
+import DiffView from "../../features/Diff/DiffView";
+import { useAuth } from "../../features/auth/AuthContext";
 
 export default function HomePage(){
     const loc = useLocation();
     const nav = useNavigate();
     const { state, dispatch } = useGit();
+    const { user } = useAuth();
 
     const [showWelcome, setShowWelcome] = useState(Boolean(loc.state?.welcome));
     const username = loc.state?.username || "환영합니다!";
@@ -26,17 +29,34 @@ export default function HomePage(){
     }, [loc.state, nav]);
 
     useEffect(() => {
+        if (!user) {
+            dispatch({ type: "SET_REPOS", payload: [] });
+            dispatch({ type: "SELECT_REPO", payload: null });
+            return;
+        }
+
         (async () => {
             try {
                 const list = await api.repos.list();
                 const arr = Array.isArray(list) ? list : (list?.items || []);
                 dispatch({ type: "SET_REPOS", payload: arr });
-                if (!state.selectedRepoId && arr.length) {
+
+                const currentRepoId = state.selectedRepoId;
+                const repoIdIsValid = arr.some(repo =>
+                    (repo.id || repo.repoId || repo._id) === currentRepoId
+                );
+
+                if (currentRepoId && !repoIdIsValid) {
+                    dispatch({ type: "SELECT_REPO", payload: null });
+                    if (arr.length) {
+                        dispatch({ type: "SELECT_REPO", payload: arr[0]?.id || arr[0]?.repoId || arr[0]?._id });
+                    }
+                } else if (!currentRepoId && arr.length) {
                     dispatch({ type: "SELECT_REPO", payload: arr[0]?.id || arr[0]?.repoId || arr[0]?._id });
                 }
             } catch {}
         })();
-    }, []);
+    }, [user, dispatch, state.selectedRepoId]);
 
     const renderCurrentView = () => {
         switch (state.currentView) {
@@ -47,8 +67,8 @@ export default function HomePage(){
                         <RepositoryView />
                     </>
                 );
-            case "diff": // ★ 신규 뷰
-                return <DiffSummaryView />;
+            case "diff":
+                return <DiffView />;
             case "prs":
                 return <PullRequestListView />;
             case "pr_detail":
@@ -93,6 +113,13 @@ export default function HomePage(){
                                 onClick={() => dispatch({ type: "SET_VIEW", payload: "files" })}
                             >
                                 파일
+                            </button>
+
+                            <button
+                                className={`tab-btn ${state.currentView === "diff" ? "active" : ""}`}
+                                onClick={() => dispatch({ type: "SET_VIEW", payload: "diff" })}
+                            >
+                                변경 사항
                             </button>
 
                             <button

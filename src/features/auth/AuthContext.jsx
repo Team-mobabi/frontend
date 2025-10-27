@@ -20,6 +20,9 @@ export function AuthProvider({ children }) {
             } catch {
                 clearToken();
                 setUser(null);
+                try {
+                    localStorage.removeItem("selectedRepoId");
+                } catch {}
             } finally {
                 setBusy(false);
             }
@@ -33,17 +36,24 @@ export function AuthProvider({ children }) {
     };
 
     const login = async ({ email, password }) => {
+        try {
+            localStorage.removeItem("selectedRepoId");
+        } catch {}
+
         const res = await api.auth.signin({ email, password });
         const token = res?.token || res?.accessToken || res?.access_token || res?.jwt || res?.id_token;
         if (!token) throw new Error("로그인 토큰을 받지 못했습니다.");
         setToken(token);
-        return await refresh(); // 로그인 직후 사용자 정보 갱신
+        return await refresh();
     };
 
     const signout = async () => {
         try { await api.auth.signout(); } catch {}
         clearToken();
         setUser(null);
+        try {
+            localStorage.removeItem("selectedRepoId");
+        } catch {}
         window.location.assign("/login");
     };
 

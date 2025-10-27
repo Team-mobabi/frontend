@@ -5,6 +5,7 @@ import AddModal from "./AddModal";
 import StagingSummary from "./StagingSummary";
 import RemoteConnectModal from "../../components/Modal/RemoteConnectModal.jsx";
 import PushConfirmModal from "../../components/Modal/PushConfirmModal";
+import CommitConfirmModal from "../../components/Modal/CommitConfirmModal";
 
 const STEP_LABEL = { 1: "원격에서 받아오기", 2: "파일 담기", 3: "메시지 쓰고 저장", 4: "원격으로 올리기" };
 
@@ -69,6 +70,7 @@ export default function ActionButtons() {
 
     const [pushConfirmOpen, setPushConfirmOpen] = useState(false);
     const [commitsToPush, setCommitsToPush] = useState([]);
+    const [commitModalOpen, setCommitModalOpen] = useState(false);
 
     // --- Effects ---
     useEffect(() => {
@@ -122,7 +124,7 @@ export default function ActionButtons() {
                     })
                     .catch(() => setBranches(["main"]));
             });
-    }, [repoId, dispatch, selBranch]);
+    }, [repoId, dispatch, selBranch, state.gitStatusCounter]);
 
     // --- Handlers ---
     const fail = (e, fb) => setToast(e?.message || fb || "오류가 발생했어요.");
@@ -163,17 +165,15 @@ export default function ActionButtons() {
                 setTimeout(() => {
                     setStep(2);
                     setToast("원격에서 받아왔어요.");
-                    // 기존 코드 유지 (그래프/통계 갱신)
                     dispatch({type: "GRAPH_DIRTY"});
                 }, 600);
             }
         } catch (e) {
             console.error("[ActionButtons] Pull 실패:", e);
             if (e.message?.includes("커밋되지 않은 변경사항") || e.message?.includes("Uncommitted Changes")) {
-                // 🔽 여기만 바꿔주세요
                 setToast("커밋되지 않은 변경사항이 있습니다. 먼저 파일을 담아 커밋해주세요.");
-                setStep(2);           // 담기 단계로 이동
-                setOpenAdd(true);     // 업로드/추가 모달 자동 오픈
+                setStep(2);
+                setOpenAdd(true);
             } else if (e?.status === 409 && e.message?.includes("empty or branch does not exist")) {
                 setToast("원격 저장소가 비어있거나 브랜치가 없습니다. '파일 담기'부터 시작해주세요!");
                 setNeedsInitialPush(true);
@@ -205,7 +205,6 @@ export default function ActionButtons() {
                 dispatch({ type: "SET_ANIMATION_START", payload: "add" });
                 setStep(3);
                 setToast(`${stagedNames.length}개 파일을 담았어요.`);
-                // 기존 코드 유지 (그래프/통계 갱신)
                 dispatch({ type: "GRAPH_TICK" });
             } else {
                 setToast("파일은 담겼으나, staged 목록이 비어있습니다.");
@@ -218,8 +217,12 @@ export default function ActionButtons() {
     };
 
     const handleCommit = async () => {
+        setCommitModalOpen(false);
         const text = msg.trim();
-        if (!text) return;
+        if (!text) {
+            setToast("커밋 메시지를 입력해야 합니다.");
+            return;
+        }
         setBusy(true);
         dispatch({ type: "SET_ANIMATION_START", payload: "commit" });
 
@@ -227,7 +230,6 @@ export default function ActionButtons() {
             await api.repos.commit(repoId, text);
             setMsg("");
             dispatch({ type: "COMMIT_SUCCESS", message: text });
-            // 기존 코드 유지 (그래프/통계 갱신)
             dispatch({ type: "GRAPH_TICK" });
             await new Promise(resolve => setTimeout(resolve, 600));
             setStep(4);
@@ -258,7 +260,6 @@ export default function ActionButtons() {
                 setRetryPushBranch(branchName);
                 setRemoteModalOpen(true);
             } else {
-                // 🔧 템플릿 리터럴로 수정
                 fail(e, `${branchName} 브랜치 정보를 가져오는 중 오류 발생`);
             }
         }
@@ -283,7 +284,6 @@ export default function ActionButtons() {
             setTimeout(() => {
                 setStep(1);
                 setToast("원격으로 올렸어요.");
-                // 기존 코드 유지 (그래프/통계 갱신)
                 dispatch({ type: "GRAPH_DIRTY" });
                 setCommitsToPush([]);
                 setBusy(false);
@@ -291,7 +291,6 @@ export default function ActionButtons() {
         } catch (e) {
             dispatch({ type: "SET_ANIMATION_END" });
             if (e.message?.includes("does not exist on remote") || e.message?.includes("no upstream")) {
-                // 🔧 문자열 깨짐 수정
                 if (window.confirm(`'${branchName}' 브랜치가 원격 저장소에 없습니다.
 새 브랜치로 '게시(Publish)'하시겠습니까?`)) {
                     try {
@@ -299,7 +298,6 @@ export default function ActionButtons() {
                         await api.repos.push(repoId, { branch: branchName, setUpstream: true });
                         setTimeout(() => {
                             setStep(1);
-                            // 🔧 템플릿 리터럴로 수정
                             setToast(`'${branchName}' 브랜치를 원격에 게시했습니다.`);
                             dispatch({ type: "GRAPH_DIRTY" });
                             setBusy(false);
@@ -319,7 +317,6 @@ export default function ActionButtons() {
         }
     };
 
-    // 브랜치 생성 (switch 옵션 제거)
     const handleCreateBranch = async () => {
         setPullOpen(false);
         const newBranchName = prompt(`'${selBranch}' 브랜치에서 시작할 새 브랜치 이름을 입력하세요:`)?.trim();
@@ -329,7 +326,6 @@ export default function ActionButtons() {
             await api.branches.create(repoId, { name: newBranchName, from: selBranch });
             setToast(`'${newBranchName}' 브랜치를 만들었습니다!`);
             setBranches(prev => (prev.includes(newBranchName) ? prev : [...prev, newBranchName]).sort());
-            // 그래프 갱신
             dispatch({ type: "GRAPH_TICK" });
         } catch (e) {
             fail(e, "브랜치 생성에 실패했어요.");
@@ -338,7 +334,6 @@ export default function ActionButtons() {
         }
     };
 
-    // (참조되고 있어 정의 필요) 브랜치 삭제
     const handleDeleteBranch = async (branchName) => {
         setPullOpen(false);
         if (branchName === "main") {
@@ -370,7 +365,6 @@ export default function ActionButtons() {
     const lock2 = step !== 2 || busy;
     const lock3 = step !== 3 || busy;
     const lock4 = step !== 4 || busy;
-    const isCommitDisabled = lock3 || !msg.trim();
 
     // --- Render ---
     return (
@@ -444,19 +438,10 @@ export default function ActionButtons() {
                         파일 담기
                     </button>
 
-                    <input
-                        className="input"
-                        placeholder="커밋 메시지"
-                        value={msg}
-                        onChange={(e) => setMsg(e.target.value)}
-                        readOnly={lock3}
-                        disabled={lock3}
-                    />
-
                     <button
-                        className={`btn btn-success ${isCommitDisabled ? "btn-locked" : ""}`}
-                        onClick={() => guard(3, handleCommit)}
-                        disabled={isCommitDisabled}
+                        className={`btn btn-success ${lock3 ? "btn-locked" : ""}`}
+                        onClick={() => guard(3, () => setCommitModalOpen(true))}
+                        disabled={lock3}
                     >
                         버전 저장
                     </button>
@@ -523,6 +508,14 @@ export default function ActionButtons() {
                 onConfirm={() => executePush(selBranch)}
                 branch={selBranch}
                 commits={commitsToPush}
+            />
+
+            <CommitConfirmModal
+                open={commitModalOpen}
+                onClose={() => setCommitModalOpen(false)}
+                onConfirm={handleCommit}
+                message={msg}
+                onMessageChange={setMsg}
             />
 
             {toast && (

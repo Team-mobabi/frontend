@@ -1,6 +1,3 @@
-/* =========================
-   0) Tokens / Reset
-========================= */
 :root {
     --bg: #f9fafc;
     --panel: #fff;
@@ -16,7 +13,22 @@
     --line: #e5e8f0;
     --chip: #f0f2f9;
     --radius: 14px;
-    --shadow: 0 4px 12px rgba(0, 0, 0, .06)
+    --shadow: 0 4px 12px rgba(0, 0, 0, .06);
+
+    /* --- 👇 스플래시 페이지용 변수 추가 --- */
+    --bg-color: var(--panel);
+    --bg-color-alt: var(--bg);
+    --text-color: var(--text);
+    --text-color-light: var(--sub);
+    --heading-color: var(--text);
+    --primary-color: var(--accent);
+    --border-color: var(--line);
+    --border-radius-small: 8px;
+    --border-radius-large: 12px;
+    --shadow-small: 0 2px 4px rgba(0, 0, 0, .04);
+    --shadow-medium: 0 6px 12px rgba(0, 0, 0, .08);
+    --shadow-extra-small: 0 1px 2px rgba(0, 0, 0, .03);
+    --code-bg: #282c34; /* AI 코드 블록 배경 */
 }
 
 * {
@@ -703,15 +715,22 @@ body {
     flex-direction: column;
 }
 
-.modal-head, .modal-actions {
+.modal-head {
     position: sticky;
     background: #fff;
     z-index: 2;
     padding: 14px 16px;
     border-bottom: 1px solid var(--line);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
 }
 
 .modal-actions {
+    position: sticky;
+    background: #fff;
+    z-index: 2;
+    padding: 14px 16px;
     border-top: 1px solid var(--line);
     border-bottom: none;
     justify-content: flex-end;
@@ -732,6 +751,20 @@ body {
     line-height: 1;
     cursor: pointer;
     color: #7a7f92
+}
+
+.btn-close {
+    border: 0;
+    background: transparent;
+    font-size: 20px;
+    line-height: 1;
+    cursor: pointer;
+    color: #7a7f92;
+    padding: 0;
+}
+
+.btn-close:hover {
+    color: var(--text);
 }
 
 .modal-body {
@@ -1719,216 +1752,848 @@ input:checked + .slider:before {
 }
 
 /* =========================
-   12) Splash (landing)
+   12) Splash (landing) - AI 강조 버전
 ========================= */
 .splash {
-    min-height: 100dvh;
     display: flex;
     flex-direction: column;
-    background: var(--bg);
-    color: var(--text)
+    min-height: 100vh;
+    background-color: var(--bg-color-alt);
+    color: var(--text-color);
+    font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans KR", sans-serif;
 }
 
 .splash-header {
-    height: 72px;
     display: flex;
-    align-items: center;
     justify-content: space-between;
-    padding: 0 20px;
-    border-bottom: 1px solid var(--line);
-    background: var(--panel);
+    align-items: center;
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid var(--border-color);
+    background-color: var(--bg-color);
+    box-shadow: var(--shadow-small);
     position: sticky;
     top: 0;
     z-index: 5;
+    height: 72px;
 }
 
 .splash-brand {
     display: flex;
     align-items: center;
-    gap: 10px;
-    font-weight: 800
+    gap: 0.75rem;
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: var(--primary-color);
 }
 
 .splash-brand img {
-    width: 52px;
-    height: 52px;
-    object-fit: contain
+    height: 40px;
+    width: auto;
+    object-fit: contain;
 }
 
-.splash-actions {
-    display: flex;
-    gap: 8px
+.splash-actions .btn {
+    margin-left: 0.75rem;
 }
 
 .splash-hero {
-    display: grid;
-    grid-template-columns:1.1fr 1fr;
-    gap: 24px;
-    padding: 48px 24px;
-    align-items: center
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 4rem;
+    padding: 5rem 2rem;
+    flex-grow: 1;
+    background: linear-gradient(135deg, var(--bg-color-alt) 0%, #fdfdff 100%);
+}
+
+.splash-copy {
+    max-width: 550px;
 }
 
 .splash-copy h1 {
-    margin: 0 0 10px;
-    font-size: 40px;
-    line-height: 1.15
+    font-size: 3rem;
+    line-height: 1.25;
+    margin-bottom: 1rem;
+    font-weight: 800;
+    color: var(--heading-color);
 }
 
-.splash-copy .accent {
-    color: var(--accent)
+.splash-copy h1 .accent {
+    color: var(--primary-color);
 }
 
 .splash-copy .lead {
-    margin: 0 0 16px;
-    color: var(--sub);
-    font-size: 15px
+    font-size: 1.1rem;
+    line-height: 1.7;
+    margin-bottom: 2rem;
+    color: var(--text-color-light);
 }
 
-.cta-row {
-    display: flex;
-    gap: 10px;
-    align-items: center;
-    margin: 10px 0 12px
+.cta-row .btn-primary {
+    font-size: 1rem;
+    padding: 0.75rem 1.75rem;
+    border-radius: 10px;
 }
 
 .trust {
+    margin-top: 2rem;
     display: flex;
-    gap: 8px;
-    flex-wrap: wrap
+    flex-wrap: wrap;
+    gap: 0.75rem;
 }
 
 .trust .chip {
-    background: var(--chip);
-    border: 1px solid var(--line);
-    padding: 6px 10px;
+    background-color: var(--bg-color);
+    border: 1px solid var(--border-color);
+    padding: 0.4rem 0.9rem;
     border-radius: 999px;
-    font-size: 12px;
-    font-weight: 700
+    font-size: 0.8rem;
+    color: var(--text-color-light);
+    font-weight: 600;
 }
 
+/* SV Card (AI Mockup) */
 .sv-card {
-    width: min(520px);
-    background: var(--panel);
-    border: 1px solid var(--line);
+    background-color: var(--bg-color);
     border-radius: var(--radius);
-    box-shadow: var(--shadow);
-    padding: 16px;
-    justify-self: end;
+    box-shadow: var(--shadow-medium);
+    padding: 1.5rem;
+    width: 450px;
+    min-width: 380px;
+    flex-shrink: 0;
 }
 
 .sv-title {
-    font-weight: 800;
+    font-size: 1.1rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
+    color: var(--heading-color);
+    text-align: center;
+}
+
+.sv-ai-mockup {
+    border-radius: 10px;
+    border: 1px solid var(--border-color);
+    background-color: var(--panel-2);
+    padding: 1rem;
+    overflow: hidden;
+}
+
+.ai-bubble {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 10px 12px;
+    background: var(--accent-light);
+    border: 1px solid rgba(75, 90, 228, 0.2);
+    border-radius: var(--border-radius-small);
+    margin-bottom: 1rem;
+}
+
+.ai-bubble-icon {
+    font-size: 1.2rem;
+    margin-top: -2px;
+}
+
+.ai-bubble p {
+    margin: 0;
+    font-size: 0.85rem;
+    font-weight: 500;
     color: var(--accent);
-    margin-bottom: 10px
+    line-height: 1.5;
+}
+
+.code-block {
+    margin: 0;
+    padding: 12px;
+    background: var(--code-bg);
+    border-radius: var(--border-radius-small);
+    overflow-x: auto;
+    font-family: monospace;
+    font-size: 0.8rem;
+    line-height: 1.6;
+}
+
+.code-block code {
+    white-space: pre;
 }
 
 .sv-steps {
-    display: grid;
-    gap: 8px;
-    margin-bottom: 12px
+    margin-top: 1rem;
 }
 
 .sv-step {
     display: flex;
     align-items: center;
-    gap: 8px
+    margin-bottom: 0.6rem;
+    gap: 0.6rem;
+}
+
+.sv-step:last-child {
+    margin-bottom: 0;
 }
 
 .sv-step .dot {
     width: 8px;
     height: 8px;
     border-radius: 50%;
-    background: var(--accent)
+    background-color: var(--muted);
+    flex-shrink: 0;
 }
 
 .sv-step .txt {
-    font-size: 13px;
-    color: var(--text)
+    font-size: 0.85rem;
+    color: var(--text-color-light);
 }
 
-.sv-graph {
-    position: relative;
-    height: 180px;
-    border: 1px dashed var(--line);
-    border-radius: 12px;
-    background: var(--panel-2);
-    overflow: hidden
-}
-
-.sv-graph .node {
-    position: absolute;
-    transform: translate(-50%, -50%);
-    background: #fff;
-    border: 1px solid var(--line);
-    border-radius: 10px;
-    padding: 6px 10px;
-    font-size: 12px;
-    box-shadow: 0 6px 14px rgba(0, 0, 0, .08);
-}
-
-.sv-graph .node.head {
-    border-color: var(--accent);
-    color: var(--accent);
-    font-weight: 800
-}
-
-.sv-graph .sv-lines {
-    position: absolute;
-    inset: 0
-}
-
-.sv-graph .sv-lines path {
-    fill: none;
-    stroke: var(--accent);
-    stroke-width: 2.4
-}
-
+/* Features Section */
 .splash-features {
-    display: grid;
-    grid-template-columns:repeat(3, 1fr);
-    gap: 16px;
-    padding: 8px 24px 28px
+    display: flex;
+    justify-content: space-around;
+    gap: 2rem;
+    padding: 4rem 2rem;
+    background-color: var(--bg-color);
+    border-top: 1px solid var(--border-color);
+    text-align: center;
 }
 
-.feat {
+.splash-features .feat {
+    max-width: 320px;
+}
+
+.splash-features .feat-head {
+    font-size: 1.3rem;
+    font-weight: 700;
+    margin-bottom: 0.75rem;
+    color: var(--heading-color);
+}
+
+.splash-features .feat-body {
+    font-size: 0.95rem;
+    line-height: 1.6;
+    color: var(--text-color-light);
+}
+
+/* Footer */
+.splash-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.5rem 2rem;
+    background-color: var(--bg-color-alt);
+    font-size: 0.85rem;
+    color: var(--muted);
+    border-top: 1px solid var(--border-color);
+}
+
+.splash-footer .foot-links a {
+    color: var(--muted);
+    text-decoration: none;
+    margin-left: 1.5rem;
+}
+
+.splash-footer .foot-links a:hover {
+    text-decoration: underline;
+    color: var(--text);
+}
+
+/* Responsive adjustments */
+@media (max-width: 1024px) {
+    .splash-hero {
+        flex-direction: column;
+        padding: 4rem 2rem;
+        gap: 3rem;
+    }
+    .splash-copy {
+        text-align: center;
+        max-width: 600px;
+    }
+    .splash-copy h1 {
+        font-size: 2.8rem;
+    }
+    .splash-copy .lead {
+        font-size: 1.05rem;
+    }
+    .cta-row {
+        justify-content: center;
+    }
+    .trust {
+        justify-content: center;
+    }
+    .sv-card {
+        width: 100%;
+        max-width: 480px;
+    }
+}
+
+@media (max-width: 768px) {
+    .splash-header {
+        padding: 1rem 1.5rem;
+        height: auto;
+    }
+    .splash-actions {
+        margin-top: 0;
+    }
+    .splash-features {
+        flex-direction: column;
+        align-items: center;
+        gap: 2.5rem;
+        padding: 3rem 1.5rem;
+    }
+    .splash-copy h1 {
+        font-size: 2.2rem;
+    }
+    .splash-footer {
+        flex-direction: column;
+        gap: 1rem;
+        padding: 1.5rem;
+    }
+    .splash-footer .foot-links {
+        display: flex;
+        flex-direction: row;
+        gap: 1rem;
+        text-align: center;
+    }
+    .splash-footer .foot-links a {
+        margin-left: 0;
+    }
+}
+
+@media (max-width: 480px) {
+    .splash-header, .splash-hero, .splash-features, .splash-footer {
+        padding-left: 1rem;
+        padding-right: 1rem;
+    }
+    .splash-brand {
+        font-size: 1.3rem;
+    }
+    .splash-brand img {
+        height: 32px;
+    }
+    .splash-copy h1 {
+        font-size: 1.8rem;
+    }
+    .splash-copy .lead {
+        font-size: 0.95rem;
+    }
+    .cta-row .btn-primary {
+        padding: 0.6rem 1.2rem;
+        font-size: 0.9rem;
+    }
+    .sv-card {
+        padding: 1rem;
+    }
+    .sv-title {
+        font-size: 1rem;
+    }
+    .sv-ai-mockup {
+        padding: 0.75rem;
+    }
+    .ai-bubble {
+        padding: 8px 10px;
+    }
+    .ai-bubble p {
+        font-size: 0.8rem;
+    }
+    .code-block {
+        padding: 10px;
+        font-size: 0.75rem;
+    }
+    .sv-step .txt {
+        font-size: 0.8rem;
+    }
+    .splash-features .feat-head {
+        font-size: 1.1rem;
+    }
+    .splash-features .feat-body {
+        font-size: 0.9rem;
+    }
+    .splash-footer .foot-links {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+}
+
+/* =========================
+   12.1) Splash Page - Action Buttons Mockup (스크롤 및 크기 조정)
+========================= */
+.sv-action-buttons-area {
+    background-color: var(--panel-2);
+    border-radius: 10px;
+    border: 1px solid var(--border-color);
+    padding: 1.5rem 1rem; /* 내부 패딩은 유지 */
+    /* overflow-x: auto; /* 부모 대신 자식에서 스크롤 처리 */
+}
+
+.action-buttons-mockup {
+    display: flex;
+    flex-wrap: nowrap; /* 한 줄 유지 */
+    gap: 8px; /* 버튼 간격 유지 */
+    align-items: center;
+    /* justify-content: center; /* 가운데 정렬 대신 왼쪽 정렬 */
+    width: 100%; /* --- 👇 부모 너비 채우기 --- */
+    overflow-x: auto; /* --- 👇 내용 넘칠 시 스크롤 --- */
+    padding-bottom: 8px; /* --- 👇 스크롤바 공간 확보 --- */
+    /* 스크롤바 스타일링 (선택 사항) */
+    scrollbar-width: thin; /* Firefox */
+    scrollbar-color: var(--line) var(--panel-2); /* Firefox */
+}
+/* Webkit (Chrome, Safari) 스크롤바 스타일링 */
+.action-buttons-mockup::-webkit-scrollbar {
+    height: 6px; /* 스크롤바 높이 */
+}
+.action-buttons-mockup::-webkit-scrollbar-track {
+    background: var(--panel-2); /* 스크롤바 트랙 배경 */
+    border-radius: 3px;
+}
+.action-buttons-mockup::-webkit-scrollbar-thumb {
+    background-color: var(--line); /* 스크롤바 색상 */
+    border-radius: 3px;
+}
+
+
+.btn-mockup {
+    border: 1px solid var(--line);
+    background: var(--panel);
+    padding: 6px 10px; /* --- 👇 버튼 패딩 더 줄임 --- */
+    border-radius: 6px; /* --- 👇 버튼 라운딩 더 줄임 --- */
+    font-size: 10px; /* --- 👇 폰트 크기 더 줄임 --- */
+    font-weight: 600;
+    color: var(--text);
+    box-shadow: var(--shadow-extra-small);
+    white-space: nowrap;
+    cursor: default;
+    opacity: 0.9;
+    transition: transform 0.1s ease;
+    flex-shrink: 0; /* --- 👇 버튼이 줄어들지 않도록 --- */
+}
+
+/* --- 나머지 버튼 색상 스타일(.btn-mockup-pull 등)은 이전과 동일 --- */
+.btn-mockup-pull {
+    background-color: var(--accent);
+    border-color: var(--accent);
+    color: white;
+}
+.btn-mockup-add { }
+.btn-mockup-commit {
+    background-color: var(--success);
+    border-color: var(--success);
+    color: white;
+}
+.btn-mockup-push {
+    background-color: var(--warn);
+    border-color: var(--warn);
+    color: white;
+}
+
+:root {
+    --blue: #3b82f6;
+}
+
+/* =========================
+   13) Auth Forms (Login/Signup)
+========================= */
+.auth-form {
+    width: min(420px, 90vw);
     background: var(--panel);
     border: 1px solid var(--line);
     border-radius: var(--radius);
     box-shadow: var(--shadow);
-    padding: 16px
+    overflow: hidden;
 }
 
-.feat-head {
-    font-weight: 800;
-    margin-bottom: 6px
+.auth-header {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--line);
 }
 
-.feat-body {
+.auth-header h4 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 700;
+}
+
+.auth-body {
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.form-group label {
+    font-size: 13px;
+    font-weight: 600;
     color: var(--sub);
-    font-size: 13px
 }
 
-.splash-footer {
-    margin-top: auto;
+.form-group .input {
+    width: 100%;
+}
+
+.auth-error {
+    color: var(--danger);
+    font-size: 12px;
+    white-space: pre-line;
+    background: rgba(239, 68, 68, 0.05);
+    border: 1px solid rgba(239, 68, 68, 0.2);
+    padding: 10px;
+    border-radius: 8px;
+}
+
+.auth-success {
+    color: var(--success);
+    font-size: 12px;
+    white-space: pre-line;
+    background: rgba(34, 197, 94, 0.05);
+    border: 1px solid rgba(34, 197, 94, 0.2);
+    padding: 10px;
+    border-radius: 8px;
+}
+
+.auth-actions {
+    padding: 16px 20px;
     border-top: 1px solid var(--line);
-    background: var(--panel);
-    padding: 14px 20px;
+    background: var(--panel-2);
+}
+
+.auth-actions .btn {
+    width: 100%;
+    padding: 12px 16px;
+}
+
+.auth-footer {
+    padding: 16px 20px;
+    text-align: center;
+    font-size: 13px;
+    color: var(--sub);
+    border-top: 1px solid var(--line);
+}
+
+.auth-footer a {
+    color: var(--accent);
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.auth-footer a:hover {
+    text-decoration: underline;
+}
+
+/* Splash Page Styles */
+.splash {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    background-color: var(--bg-color-alt); /* Light background */
+    color: var(--text-color);
+    font-family: 'Pretendard', sans-serif;
+}
+
+.splash-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.5rem 2rem;
+    border-bottom: 1px solid var(--border-color);
+    background-color: var(--bg-color);
+    box-shadow: var(--shadow-small);
+}
+
+.splash-brand {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    color: var(--muted);
+    gap: 0.75rem;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--primary-color);
 }
 
-.splash-footer .foot-links {
+.splash-brand img {
+    height: 32px;
+    width: auto;
+}
+
+.splash-actions .btn {
+    margin-left: 0.75rem;
+}
+
+.splash-hero {
     display: flex;
-    gap: 12px
+    justify-content: center;
+    align-items: center;
+    gap: 4rem;
+    padding: 6rem 4rem;
+    flex-grow: 1;
+    background: linear-gradient(135deg, var(--bg-color-alt) 0%, var(--bg-color) 100%);
 }
 
-.splash-footer a {
-    color: var(--muted);
-    text-decoration: none
+.splash-copy {
+    max-width: 500px;
 }
 
-.splash-footer a:hover {
-    color: var(--accent)
+.splash-copy h1 {
+    font-size: 3.5rem;
+    line-height: 1.2;
+    margin-bottom: 1.5rem;
+    font-weight: 800;
+    color: var(--heading-color);
+}
+
+.splash-copy h1 .accent {
+    color: var(--primary-color);
+}
+
+.splash-copy .lead {
+    font-size: 1.25rem;
+    line-height: 1.6;
+    margin-bottom: 2.5rem;
+    color: var(--text-color-light);
+}
+
+.cta-row .btn-primary {
+    font-size: 1.1rem;
+    padding: 0.8rem 2rem;
+    border-radius: var(--border-radius-large);
+}
+
+.trust {
+    margin-top: 2.5rem; /* --- 👇 상단 간격 증가 --- */
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 0.85rem; /* --- 👇 칩 간격 살짝 증가 --- */
+    justify-content: center;
+    overflow-x: auto;
+    padding-bottom: 5px;
+}
+.trust .chip {
+    background-color: var(--bg-color);
+    border: 1px solid var(--border-color);
+    padding: 0.4rem 0.9rem;
+    border-radius: 999px;
+    font-size: 0.8rem;
+    color: var(--text-color-light);
+    font-weight: 600;
+    white-space: nowrap; /* 칩 내부 텍스트 줄바꿈 방지 */
+}
+
+/* SV Card (Simplified Visualization Card) */
+.sv-card {
+    background-color: var(--bg-color);
+    border-radius: var(--border-radius-large);
+    box-shadow: var(--shadow-medium);
+    padding: 2rem;
+    width: 480px;
+    min-width: 400px; /* Adjust as needed */
+    flex-shrink: 0;
+}
+
+.sv-title {
+    font-size: 1.2rem;
+    font-weight: 600;
+    margin-bottom: 1.5rem;
+    color: var(--heading-color);
+    text-align: center;
+}
+
+.sv-graph {
+    position: relative;
+    width: 100%;
+    background-color: var(--bg-color-alt);
+    border-radius: var(--border-radius-small);
+    border: 1px solid var(--border-color);
+    padding: 1rem;
+    overflow: hidden; /* Ensure nodes/lines don't go out */
+}
+
+.sv-graph .node {
+    position: absolute;
+    padding: 0.4rem 0.8rem;
+    border-radius: var(--border-radius-small);
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: white;
+    box-shadow: var(--shadow-extra-small);
+    white-space: nowrap;
+    z-index: 10;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.2);
+}
+
+/* Custom Node colors for example */
+.sv-graph .node[style*="--blue"] { background: var(--blue); }
+.sv-graph .node[style*="--green"] { background: var(--green); }
+.sv-graph .node[style*="--orange"] { background: var(--orange); }
+
+
+.sv-graph .sv-lines path {
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    fill: none;
+    transition: stroke 0.3s ease;
+}
+
+.sv-steps {
+    margin-top: 1.5rem;
+}
+
+.sv-step {
+    display: flex;
+    align-items: center;
+    margin-bottom: 0.75rem;
+    gap: 0.75rem;
+}
+
+.sv-step:last-child {
+    margin-bottom: 0;
+}
+
+.sv-step .dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background-color: var(--primary-color);
+    flex-shrink: 0;
+}
+
+.sv-step .txt {
+    font-size: 0.95rem;
+    color: var(--text-color-light);
+}
+
+/* Features Section */
+.splash-features {
+    display: flex;
+    justify-content: center;
+    gap: 3rem;
+    padding: 4rem 2rem;
+    background-color: var(--bg-color);
+    border-top: 1px solid var(--border-color);
+    border-bottom: 1px solid var(--border-color);
+    box-shadow: var(--shadow-small);
+}
+
+.splash-features .feat {
+    max-width: 300px;
+    text-align: center;
+}
+
+.splash-features .feat-head {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
+    color: var(--heading-color);
+}
+
+.splash-features .feat-body {
+    font-size: 1rem;
+    line-height: 1.6;
+    color: var(--text-color-light);
+}
+
+/* Footer */
+.splash-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.5rem 2rem;
+    background-color: var(--bg-color-alt);
+    font-size: 0.9rem;
+    color: var(--text-color-light);
+}
+
+.splash-footer .foot-links a {
+    color: var(--text-color-light);
+    text-decoration: none;
+    margin-left: 1.5rem;
+}
+
+.splash-footer .foot-links a:hover {
+    text-decoration: underline;
+}
+
+/* Responsive adjustments */
+@media (max-width: 1024px) {
+    .splash-hero {
+        flex-direction: column;
+        padding: 4rem 2rem;
+        gap: 2rem;
+    }
+    .splash-copy {
+        text-align: center;
+    }
+    .splash-copy h1 {
+        font-size: 3rem;
+    }
+    .splash-copy .lead {
+        font-size: 1.1rem;
+    }
+    .cta-row {
+        justify-content: center;
+    }
+    .trust {
+        justify-content: center;
+    }
+    .sv-card {
+        width: 100%;
+        max-width: 450px; /* Limit width on smaller screens */
+    }
+}
+
+@media (max-width: 768px) {
+    .splash-header {
+        flex-direction: column;
+        gap: 1rem;
+    }
+    .splash-actions {
+        margin-top: 1rem;
+    }
+    .splash-features {
+        flex-direction: column;
+        gap: 2rem;
+        padding: 3rem 1.5rem;
+    }
+    .splash-copy h1 {
+        font-size: 2.5rem;
+    }
+    .splash-footer {
+        flex-direction: column;
+        gap: 1rem;
+    }
+    .splash-footer .foot-links {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        text-align: center;
+    }
+    .splash-footer .foot-links a {
+        margin-left: 0;
+    }
+}
+
+@media (max-width: 480px) {
+    .splash-header, .splash-hero, .splash-features, .splash-footer {
+        padding-left: 1rem;
+        padding-right: 1rem;
+    }
+    .splash-brand {
+        font-size: 1.3rem;
+    }
+    .splash-brand img {
+        height: 28px;
+    }
+    .splash-copy h1 {
+        font-size: 2rem;
+    }
+    .splash-copy .lead {
+        font-size: 1rem;
+    }
+    .cta-row .btn-primary {
+        padding: 0.7rem 1.5rem;
+        font-size: 1rem;
+    }
 }

@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../features/auth/AuthContext";
 
 export default function LoginPage() {
@@ -31,16 +31,31 @@ export default function LoginPage() {
     };
 
     return (
-        <form className="modal" onSubmit={onSubmit} style={{ width: 420, margin: "10vh auto", padding: 16 }}>
-            <div className="modal-head"><h4>로그인</h4></div>
-            <div className="modal-body" style={{ display: "grid", gap: 10 }}>
-                <input className="input" type="email" name="email" placeholder="이메일" value={form.email} onChange={onChange} />
-                <input className="input" type="password" name="password" placeholder="비밀번호" value={form.password} onChange={onChange} />
-                {err && <div style={{ color: "var(--danger)", fontSize: 12, whiteSpace: "pre-line" }}>{err}</div>}
-            </div>
-            <div className="modal-actions" style={{ justifyContent: "flex-end" }}>
-                <button className="btn btn-primary" type="submit" disabled={busy}>{busy ? "로그인 중…" : "로그인"}</button>
-            </div>
-        </form>
+        <div className="splash" style={{ justifyContent: "center", alignItems: "center" }}>
+            <form className="auth-form" onSubmit={onSubmit}>
+                <div className="auth-header">
+                    <h4>로그인</h4>
+                </div>
+                <div className="auth-body">
+                    <div className="form-group">
+                        <label htmlFor="email">이메일</label>
+                        <input className="input" id="email" type="email" name="email" placeholder="email@example.com" value={form.email} onChange={onChange} disabled={busy} />
+                    </div>
+                    <div className="form-group">
+                        <label htmlFor="password">비밀번호</label>
+                        <input className="input" id="password" type="password" name="password" placeholder="비밀번호" value={form.password} onChange={onChange} disabled={busy} />
+                    </div>
+                    {err && <div className="auth-error">{err}</div>}
+                </div>
+                <div className="auth-actions">
+                    <button className="btn btn-primary" type="submit" disabled={busy}>
+                        {busy ? "로그인 중…" : "로그인"}
+                    </button>
+                </div>
+                <div className="auth-footer">
+                    계정이 없으신가요? <Link to="/signup">회원가입</Link>
+                </div>
+            </form>
+        </div>
     );
 }

@@ -55,12 +55,21 @@ export const api = {
         signin: async (payload) => {
             const data = await request("POST", "/auth/signin", payload);
             const token = data?.token || data?.accessToken;
-            if (!token) throw new Error("로그인 응답에 token이 없습니다.");
-            setToken(token);
-            return data;
+            if (token) {
+                setToken(token);
+                return { ...data, status: "authenticated" };
+            }
+            if (data?.status === "pending_verification") {
+                return { ...data, status: "pending_verification" };
+            }
+            throw new Error("로그인 응답이 올바르지 않습니다.");
         },
         signout: async () => { clearToken(); return true; },
         getToken,
+    },
+    email: {
+        sendVerification: (payload) => request("POST", "/email/send-verification", payload),
+        verifyCode: (payload) => request("POST", "/email/verify-code", payload),
     },
     user: {
         me: () => request("GET", "/users/me"),
@@ -100,6 +109,12 @@ export const api = {
         aiSuggest: (id, filePath) => request("POST", `/repos/${id}/conflicts/ai-suggest`, { filePath }),
         resolve: (id, resolution) => request("POST", `/repos/${id}/conflicts/resolve`, resolution),
         diffStats: (id) => request("GET", `/repos/${id}/diff/stats`),
+        diffWorking: (id, params) => request("GET", `/repos/${id}/diff/working${qs(params)}`),
+        diffStaged: (id, params) => request("GET", `/repos/${id}/diff/staged${qs(params)}`),
+        diffCommits: (id, commitA, commitB) => request("GET", `/repos/${id}/diff/commits/${commitA}/${commitB}`),
+        diffBranches: (id, params) => request("GET", `/repos/${id}/diff/branches${qs(params)}`),
+        diffCommit: (id, hash) => request("GET", `/repos/${id}/diff/commit/${hash}`),
+        diffFiles: (id, params) => request("GET", `/repos/${id}/diff/files${qs(params)}`),
     },
     branches: {
         list: (id, params) => request("GET", `/repos/${id}/branches${qs(params)}`),
@@ -119,4 +134,3 @@ export const api = {
     },
     request,
 };
-
