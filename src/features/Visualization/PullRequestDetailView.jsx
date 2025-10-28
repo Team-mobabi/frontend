@@ -163,7 +163,7 @@ export default function PullRequestDetailView() {
                         ))}
                     </div>
 
-                    {/* [수정] isPrOpen 변수 사용 */}
+                    {/* 리뷰 작성 섹션: 승인/댓글 작성 */}
                     {isPrOpen && (
                         <div className="review-form">
                             <textarea
@@ -189,6 +189,9 @@ export default function PullRequestDetailView() {
                                 >
                                     {isSubmitting ? '등록 중...' : '승인'}
                                 </button>
+                            </div>
+                            <div style={{ marginTop: 8, fontSize: 12, color: 'var(--sub)' }}>
+                                병합하려면 최소 1개의 승인 리뷰가 필요합니다.
                             </div>
                         </div>
                     )}

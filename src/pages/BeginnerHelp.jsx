@@ -19,7 +19,7 @@ const pages = [
                 <p>화면 중앙 그래프의 왼쪽은 <strong>내 컴퓨터(Local)</strong>, 오른쪽은 <strong>서버(Remote)</strong> 작업 공간을 보여줘요. 내 작업은 왼쪽에 먼저 기록되고, '서버에 올리기'를 하면 오른쪽에 복사됩니다.</p>
 
                 <h5><strong>2. 작업 기록 (Commit)</strong> 💾</h5>
-                <p>그래프의 <strong>동그란 원(🔵)</strong> 하나하나가 '작업 기록' (Commit)이에요. '버전 저장'을 할 때마다 생기죠. 각 기록은 고유 ID를 가져요.</p>
+                <p>그래프의 <strong>동그란 원(🔵)</strong> 하나하나가 '작업 기록' (Commit)이에요. '현재 상태 저장'을 할 때마다 생기죠. 각 기록은 고유 ID를 가져요.</p>
                 <ul>
                     <li><strong>초록색 테두리 원(🟢)</strong>: 현재 내가 작업 중인 최신 기록(HEAD)이에요.</li>
                     <li><strong>주황색 원(🟠)</strong>: 여러 작업 내용을 하나로 합친 특별한 기록(Merge Commit)이에요.</li>
@@ -56,7 +56,7 @@ const pages = [
                 <ol>
                     <li><strong>[버전] 에서 가져오기 (Pull)</strong>: 다른 사람이 서버에 올린 최신 내용을 내 컴퓨터로 가져와요.</li>
                     <li><strong>파일 담기 (Add/Stage)</strong>: 수정한 파일 중 이번 버전에 포함시킬 파일을 선택해서 장바구니에 담아요.</li>
-                    <li><strong>버전 저장 (Commit)</strong>: 담은 파일들을 하나의 작업 단위로 묶고, 설명을 적어 내 컴퓨터에 기록해요. (그래프에 새 원 생성!)</li>
+                    <li><strong>현재 상태 저장 (Commit)</strong>: 담은 파일들을 하나의 작업 단위로 묶고, 설명을 적어 내 컴퓨터에 기록해요. (그래프에 새 원 생성!)</li>
                     <li><strong>[버전] 으로 올리기 (Push)</strong>: 내 컴퓨터에 저장한 기록들을 서버에 업로드해서 공유하거나 백업해요.</li>
                 </ol>
                 <p>이 과정을 반복하면서 작업하면 된답니다!</p>

@@ -10,7 +10,7 @@ export default function CommitConfirmModal({ open, onClose, onConfirm, message, 
         <div className="modal-backdrop">
             <div className="modal" style={{ width: "60vw", minWidth: 600, maxWidth: 900 }}>
                 <div className="modal-head">
-                    <h4>버전 저장 (커밋)</h4>
+                    <h4>현재 상태 저장 (커밋)</h4>
                     <button className="btn-close" onClick={onClose}>×</button>
                 </div>
                 <div className="modal-body" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
@@ -46,7 +46,7 @@ export default function CommitConfirmModal({ open, onClose, onConfirm, message, 
                         onClick={onConfirm}
                         disabled={isMessageEmpty}
                     >
-                        {isMessageEmpty ? "메시지를 입력하세요" : "커밋하기"}
+                        {isMessageEmpty ? "메시지를 입력하세요" : "현재 상태 저장"}
                     </button>
                 </div>
             </div>

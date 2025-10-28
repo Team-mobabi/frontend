@@ -7,7 +7,7 @@ const ActionButtonsMockup = () => (
     <div className="action-buttons-mockup">
         <button className="btn btn-mockup btn-mockup-pull">main 에서 받아오기 ▼</button>
         <button className="btn btn-mockup btn-mockup-add">파일 담기</button>
-        <button className="btn btn-mockup btn-mockup-commit">버전 저장</button>
+        <button className="btn btn-mockup btn-mockup-commit">현재 상태 저장</button>
         <button className="btn btn-mockup btn-mockup-push primary">main 으로 올리기 ▼</button>
     </div>
 );
