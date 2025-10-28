@@ -27,15 +27,10 @@ export default function PullRequestListView() {
         fetchPRs()
     }, [selectedRepoId, dispatch, state.graphVersion])
 
-    const handleMerge = async (prId, e) => {
-        e.stopPropagation();
-        if (!window.confirm(`PR #${prId}를 병합하시겠습니까?`)) return
-        try {
-            await api.pullRequests.merge(selectedRepoId, prId)
-            dispatch({ type: 'GRAPH_DIRTY' })
-        } catch (e) {
-            alert(`병합 실패: ${e.message}`)
-        }
+    // 병합은 상세 화면에서만 가능 (리뷰 승인 필요)
+    const openDetail = (prId, e) => {
+        if (e) e.stopPropagation();
+        dispatch({ type: 'SELECT_PR', payload: prId })
     }
 
     return (
@@ -68,10 +63,10 @@ export default function PullRequestListView() {
                                 </div>
                             </div>
                             <div className="pr-actions">
-                                {/* [수정] pr.state가 'open' (소문자)이어도 인식하도록 .toUpperCase() 추가 */}
+                                {/* 병합은 상세 화면에서 승인 리뷰가 있어야 가능 */}
                                 {pr.state?.toUpperCase() === 'OPEN' ? (
-                                    <button className="btn btn-success" onClick={(e) => handleMerge(pr.id, e)}>
-                                        병합하기
+                                    <button className="btn btn-primary" onClick={(e) => openDetail(pr.id, e)}>
+                                        검토/병합
                                     </button>
                                 ) : (
                                     <span className="pr-state-chip" style={{textTransform: 'uppercase'}}>{pr.state}</span>

@@ -1,4 +1,5 @@
 import React, {useEffect, useMemo, useRef, useState} from "react";
+import Toast from "../../components/Toast/Toast.jsx";
 // [삭제] api, useGit 임포트 제거 (더 이상 status 안 부름)
 
 // [삭제] Helper Functions (candidatesFromStatus 등) 모두 제거
@@ -7,6 +8,7 @@ import React, {useEffect, useMemo, useRef, useState} from "react";
 export default function AddModal({open, onCancel, onConfirm}) {
     // [삭제] status 관련 state 모두 제거 (tab, loading, files, selected, q 등)
     const [err, setErr] = useState("");
+    const [toast, setToast] = useState("");
     const [pickedFiles, setPickedFiles] = useState([]);
 
     const fileInputRef = useRef(null);
@@ -40,7 +42,12 @@ export default function AddModal({open, onCancel, onConfirm}) {
             });
         });
 
-        setPickedFiles(list);
+        let chosen = list;
+        if (chosen.length > 100) {
+            chosen = chosen.slice(0, 100);
+            setToast("최대 100개 파일까지만 담을 수 있어요. 처음 100개만 선택됩니다.");
+        }
+        setPickedFiles(chosen);
 
         if (e.target.webkitdirectory) {
             if (folderInputRef.current) folderInputRef.current.value = null;
@@ -71,7 +78,12 @@ export default function AddModal({open, onCancel, onConfirm}) {
             setPickedFiles([]);
         } else {
             setErr("");
-            setPickedFiles(list);
+            let chosen = list;
+            if (chosen.length > 100) {
+                chosen = chosen.slice(0, 100);
+                setToast("최대 100개 파일까지만 담을 수 있어요. 처음 100개만 선택됩니다.");
+            }
+            setPickedFiles(chosen);
         }
     }
 
@@ -172,6 +184,13 @@ export default function AddModal({open, onCancel, onConfirm}) {
                     </button>
                 </div>
             </div>
+            {toast && (
+                <Toast
+                    message={toast}
+                    duration={3000}
+                    onClose={() => setToast("")}
+                />
+            )}
         </div>
     );
 }

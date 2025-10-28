@@ -95,7 +95,7 @@ export default function ActionButtons() {
     const repoId = state.selectedRepoId;
 
     const [step, setStep] = useState(1);
-    const [msg, setMsg] = useState(""); // '버전 저장' 메시지
+    const [msg, setMsg] = useState(""); // '현재 상태 저장' 메시지
     const [openAdd, setOpenAdd] = useState(false); // '파일 담기' 모달
     const [toast, setToast] = useState("");
     const [busy, setBusy] = useState(false);
@@ -110,10 +110,11 @@ export default function ActionButtons() {
     const [pushConfirmOpen, setPushConfirmOpen] = useState(false); // '올리기 확인' 모달
     const [commitsToPush, setCommitsToPush] = useState([]); // 서버에 올릴 기록 목록
     const [isDivergedPush, setIsDivergedPush] = useState(false); // Force push 필요 여부
-    const [commitModalOpen, setCommitModalOpen] = useState(false); // '버전 저장 확인' 모달
+    const [commitModalOpen, setCommitModalOpen] = useState(false); // '현재 상태 저장' 확인 모달
     const [hasPushableCommits, setHasPushableCommits] = useState(false); // Push 가능한 커밋 존재 여부
 
     // --- Effects ---
+    const [actionHint, setActionHint] = useState(""); // 최근 동작 설명을 상단 배너로 노출
     useEffect(() => {
         if (repoId) {
             setMsg("");
@@ -121,6 +122,14 @@ export default function ActionButtons() {
             setPushOpen(false);
         }
     }, [repoId]);
+
+    // 토스트가 뜰 때 상단 배너에도 동일 메시지를 잠시 노출
+    useEffect(() => {
+        if (!toast) return;
+        setActionHint(toast);
+        const t = setTimeout(() => setActionHint(""), 6000);
+        return () => clearTimeout(t);
+    }, [toast]);
 
     useEffect(() => {
         if (!repoId) return;
@@ -249,7 +258,7 @@ export default function ActionButtons() {
         } catch (e) {
             console.error("[ActionButtons] 가져오기 실패:", e);
             if (e.message?.includes("커밋되지 않은 변경사항") || e.message?.includes("Uncommitted Changes")) {
-                setToast("아직 저장하지 않은 변경사항이 있습니다. 먼저 '파일 담기' 후 '버전 저장'을 해주세요.");
+                setToast("아직 저장하지 않은 변경사항이 있습니다. 먼저 '파일 담기' 후 '현재 상태 저장'을 해주세요.");
                 setStep(2); // '파일 담기' 단계로 이동
                 setOpenAdd(true); // '파일 담기' 모달 자동 열기
             } else if (e?.status === 409 && e.message?.includes("empty or branch does not exist")) {
@@ -298,7 +307,7 @@ export default function ActionButtons() {
         }
     };
 
-    // '버전 저장'(Commit) 처리
+    // '현재 상태 저장'(Commit) 처리
     const handleCommit = async () => {
         setCommitModalOpen(false);
         const text = msg.trim(); // 저장 메시지
@@ -476,7 +485,7 @@ export default function ActionButtons() {
     // 각 단계별 버튼 활성화/비활성화 로직
     const lock1 = step !== 1 || busy; // 가져오기 버튼
     const lock2 = (step !== 2 && step !== 1) || busy; // 파일 담기 버튼 (step 1에서도 허용)
-    const lock3 = step !== 3 || busy; // 버전 저장 버튼
+    const lock3 = step !== 3 || busy; // 현재 상태 저장 버튼
     const lock4 = !hasPushableCommits || busy; // 올리기 버튼 (Push 가능한 커밋이 있을 때 활성화)
 
     // --- Render ---
@@ -561,54 +570,86 @@ export default function ActionButtons() {
                         파일 담기
                     </button>
 
-                    {/* '버전 저장' 버튼 */}
+                    {/* '현재 상태 저장' 버튼 */}
                     <button
                         className={`btn btn-success ${lock3 ? "btn-locked" : ""}`}
                         onClick={() => guard(3, () => setCommitModalOpen(true))}
                         disabled={lock3}
                         title="담긴 파일들을 하나의 작업 단위로 저장합니다."
                     >
-                        버전 저장
+                        현재 상태 저장
                     </button>
 
                     {/* '서버에 올리기' 버튼 (버전 선택 포함) */}
                     <div className={`btn-split-wrap primary ${lock4 ? "locked" : ""}`}>
-                        <button
-                            className="btn btn-primary btn-split-action"
-                            onClick={() => guard(4, () => handlePush(selBranch))}
-                            disabled={lock4}
-                            title={`'${selBranch}' 버전의 저장된 내용을 서버에 올립니다.`}
-                        >
-                            {selBranch} 으로 올리기
-                        </button>
-                        <button
-                            className="btn btn-primary btn-split-trigger"
-                            onClick={() => guard(4, () => setPushOpen(!pushOpen))}
-                            disabled={lock4}
-                            title="올릴 작업 버전 선택"
-                        >
-                            ▼
-                        </button>
-                        {/* 버전 선택 메뉴 */}
-                        {pushOpen && !lock4 && (
-                            <div className="combo-menu">
-                                {branches.map((b) => (
+                        {/** 두 개의 브랜치만 있을 때는 ▼ 대신 토글 동작 */}
+                        {(() => {
+                            const twoBranches = Array.isArray(branches) && branches.length === 2;
+                            const otherBranch = twoBranches ? branches.find((b) => b !== selBranch) : null;
+                            return (
+                                <>
                                     <button
-                                        key={b}
-                                        className={`combo-item ${b === selBranch ? "active" : ""}`}
-                                        onClick={() => {
-                                            setSelBranch(b); // 선택한 버전으로 상태 변경
-                                            setPushOpen(false);
-                                        }}
-                                        title={`'${b}' 버전으로 올리기 선택`}
+                                        className="btn btn-primary btn-split-action"
+                                        onClick={() => guard(4, () => handlePush(selBranch))}
+                                        disabled={lock4}
+                                        title={`'${selBranch}' 버전의 저장된 내용을 서버에 올립니다.`}
                                     >
-                                        {b}
+                                        {selBranch} 으로 올리기
                                     </button>
-                                ))}
-                            </div>
-                        )}
+                                    <button
+                                        className="btn btn-primary btn-split-trigger"
+                                        onClick={() => guard(4, () => {
+                                            if (twoBranches && otherBranch) {
+                                                setSelBranch(otherBranch);
+                                                setToast(`올릴 브랜치를 '${otherBranch}'(으)로 전환했어요.`);
+                                            } else {
+                                                setPushOpen(!pushOpen);
+                                            }
+                                        })}
+                                        disabled={lock4}
+                                        title={twoBranches ? "다른 브랜치로 전환" : "올릴 작업 버전 선택"}
+                                    >
+                                        ▼
+                                    </button>
+                                    {/* 버전 선택 메뉴 (두 개 초과일 때만 표시) */}
+                                    {! (Array.isArray(branches) && branches.length === 2) && pushOpen && !lock4 && (
+                                        <div className="combo-menu">
+                                            {branches.map((b) => (
+                                                <button
+                                                    key={b}
+                                                    className={`combo-item ${b === selBranch ? "active" : ""}`}
+                                                    onClick={() => {
+                                                        setSelBranch(b); // 선택한 버전으로 상태 변경
+                                                        setPushOpen(false);
+                                                    }}
+                                                    title={`'${b}' 버전으로 올리기 선택`}
+                                                >
+                                                    {b}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )}
+                                </>
+                            );
+                        })()}
                     </div>
                 </div>
+
+                {/* 최근 동작 설명 배너 (가시성 강화) */}
+                {actionHint && (
+                    <div
+                        style={{
+                            marginTop: 10,
+                            padding: "10px 12px",
+                            background: "var(--panel-2)",
+                            border: "1px solid var(--line)",
+                            borderRadius: 8,
+                            color: "var(--text)",
+                        }}
+                    >
+                        {actionHint}
+                    </div>
+                )}
 
                 {/* '담긴 파일 목록' 요약 표시 (StagingSummary 컴포넌트 사용) */}
                 <StagingSummary

@@ -12,6 +12,7 @@ export default function CreateRepoModal({ open, onClose, onRepoCreated }) {
         if (!open) {
             setName("");
             setDescription("");
+            setIsPrivate(false);
             setErr("");
             setBusy(false);
         }
@@ -72,6 +73,18 @@ export default function CreateRepoModal({ open, onClose, onRepoCreated }) {
                         disabled={busy}
                         style={{ resize: "vertical" }}
                     />
+                    <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 14 }}>
+                        <input
+                            type="checkbox"
+                            checked={isPrivate}
+                            onChange={(e) => setIsPrivate(e.target.checked)}
+                            disabled={busy}
+                        />
+                        비공개 레포지토리로 만들기
+                    </label>
+                    <div style={{ fontSize: 12, color: "var(--sub)" }}>
+                        공개 설정은 나중에 변경할 수 있어요. 공개로 만들면 누구나 볼 수 있습니다.
+                    </div>
                     {err && <div style={{ color: "var(--danger)", fontSize: 12 }}>{err}</div>}
                 </div>
                 <div className="modal-actions">

@@ -54,7 +54,13 @@ export function AuthProvider({ children }) {
         try {
             localStorage.removeItem("selectedRepoId");
         } catch {}
-        window.location.assign("/login");
+        // 스플래쉬 화면으로 이동하도록 경로 수정 (베이스 URL 고려)
+        try {
+            const base = (typeof import.meta !== 'undefined' && import.meta.env?.BASE_URL) || "/mobabi/ui";
+            window.location.assign(`${base}/`);
+        } catch {
+            window.location.assign("/");
+        }
     };
 
     return (
