@@ -183,7 +183,7 @@ export default function ActionButtons() {
                     })
                     .catch(() => setBranches(["main"]));
             });
-    }, [repoId, dispatch, selBranch, state.gitStatusCounter]); // 상태 변경 시 다시 확인
+    }, [repoId, dispatch, selBranch, state.graphVersion]); // 그래프/상태 변경 시 다시 확인
 
     // --- Handlers ---
     const fail = (e, fb) => setToast(e?.message || fb || "오류가 발생했어요.");
@@ -193,10 +193,8 @@ export default function ActionButtons() {
 
         // 예외: step 1에서 파일 담기(step 2) 허용 (가져오기 건너뛰기)
         const allowSkipPull = step === 1 && targetStep === 2;
-        // 예외: Push 가능한 커밋이 있으면 올리기(step 4) 허용
-        const allowPush = targetStep === 4 && hasPushableCommits;
-
-        if (step !== targetStep && !allowSkipPull && !allowPush && !(needsInitialPush && targetStep === 2 && step === 1)) {
+        // 더 엄격한 단계 진행: 현재 단계가 아니면 불가 (단, 1→2만 허용)
+        if (step !== targetStep && !allowSkipPull && !(needsInitialPush && targetStep === 2 && step === 1)) {
             // 현재 단계가 아니면 안내 메시지 표시
             setToast(`먼저 "${STEP_LABEL[step]}" 단계를 진행해주세요!`);
             return;
@@ -486,7 +484,7 @@ export default function ActionButtons() {
     const lock1 = step !== 1 || busy; // 가져오기 버튼
     const lock2 = (step !== 2 && step !== 1) || busy; // 파일 담기 버튼 (step 1에서도 허용)
     const lock3 = step !== 3 || busy; // 현재 상태 저장 버튼
-    const lock4 = !hasPushableCommits || busy; // 올리기 버튼 (Push 가능한 커밋이 있을 때 활성화)
+    const lock4 = step !== 4 || !hasPushableCommits || busy; // 올리기 버튼은 4단계에서만 활성화
 
     // --- Render ---
     return (
