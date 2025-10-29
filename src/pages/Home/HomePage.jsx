@@ -14,7 +14,7 @@ import PullRequestDetailView from "../../features/Visualization/PullRequestDetai
 import FileBrowserView from "../../features/FileBrowser/FileBrowserView";
 import DiffView from "../../features/Diff/DiffView";
 import { useAuth } from "../../features/auth/AuthContext";
-import BeginnerHelp from "../BeginnerHelp"; // --- 👇 도움말 모달 import ---
+import BeginnerHelp from "../BeginnerHelp";
 
 export default function HomePage(){
     const loc = useLocation();

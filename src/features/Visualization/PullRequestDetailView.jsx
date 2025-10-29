@@ -64,7 +64,6 @@ export default function PullRequestDetailView() {
         return reviews.some(review => review.status?.toUpperCase() === 'APPROVED');
     }, [reviews]);
 
-    // [신규] PR이 열려있는지 확인 (대소문자 무관)
     const isPrOpen = useMemo(() => {
         return details?.state?.toUpperCase() === 'OPEN';
     }, [details]);
@@ -110,7 +109,6 @@ export default function PullRequestDetailView() {
         }
     }
 
-    // [신규] PR 닫기 핸들러
     const handleClosePr = async () => {
         if (!window.confirm(`PR #${details.id}를 닫으시겠습니까?\n병합되지 않은 변경사항은 사라집니다.`)) return;
         setIsSubmitting(true);
@@ -125,6 +123,38 @@ export default function PullRequestDetailView() {
         }
     };
 
+    // [신규] Diff 텍스트에 색상을 적용하기 위한 헬퍼 함수
+    const renderDiffPatch = (patch) => {
+        if (!patch) {
+            return <code style={{ color: 'var(--sub)' }}>이 파일에 대한 차이가 없습니다.</code>;
+        }
+
+        const lines = patch.split('\n');
+        return (
+            <code>
+                {lines.map((line, index) => {
+                    let style = {};
+                    if (line.startsWith('+')) {
+                        style.color = 'var(--success)'; // 녹색
+                        style.backgroundColor = 'rgba(40, 167, 69, 0.1)';
+                    } else if (line.startsWith('-')) {
+                        style.color = 'var(--danger)'; // 빨간색
+                        style.backgroundColor = 'rgba(220, 53, 69, 0.1)';
+                    } else if (line.startsWith('@@')) {
+                        style.color = 'var(--info)'; // 파란색 (파일 위치)
+                    }
+
+                    return (
+                        <span key={index} style={{ ...style, display: 'block', whiteSpace: 'pre-wrap' }}>
+                            {line || ' '}
+                        </span>
+                    );
+                })}
+            </code>
+        );
+    };
+
+
     return (
         <div className="panel pr-detail-view">
             <button className="btn btn-ghost" onClick={() => dispatch({ type: 'SET_VIEW', payload: 'prs' })}>
@@ -138,7 +168,6 @@ export default function PullRequestDetailView() {
                 <>
                     <div className="pr-detail-header">
                         <h2>#{details.id} {details.title}</h2>
-                        {/* [수정] isPrOpen 변수 사용 */}
                         {isPrOpen ? (
                             <div className="pr-detail-actions">
                                 <button className="btn" onClick={handleClosePr} disabled={isSubmitting}>
@@ -190,18 +219,21 @@ export default function PullRequestDetailView() {
                                             </div>
                                         ) : null}
                                     </div>
+                                    {/* [수정됨] Diff 렌더링을 헬퍼 함수로 대체 */}
                                     <pre className="pr-diff" style={{
                                         margin: 0, border: '1px solid var(--line)', borderTop: 'none',
-                                        borderBottomLeftRadius: 8, borderBottomRightRadius: 8, overflowX: 'auto'
+                                        borderBottomLeftRadius: 8, borderBottomRightRadius: 8, overflowX: 'auto',
+                                        padding: '8px 12px', background: 'var(--panel-bg)'
                                     }}>
-                                        <code>{file.patch || '이 파일에 대한 차이가 없습니다.'}</code>
+                                        {renderDiffPatch(file.patch)}
                                     </pre>
                                 </div>
                             ))}
                         </div>
                     ) : (
-                        <pre className="pr-diff">
-                            <code>{(typeof diff === 'string' ? diff : diff?.diff) || '변경 사항이 없거나 불러올 수 없습니다.'}</code>
+                        // [수정됨] 폴백 Diff 렌더링
+                        <pre className="pr-diff" style={{ padding: '8px 12px', background: 'var(--panel-bg)', borderRadius: 8 }}>
+                            {renderDiffPatch((typeof diff === 'string' ? diff : diff?.diff))}
                         </pre>
                     )}
 

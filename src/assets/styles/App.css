@@ -1086,8 +1086,11 @@ body {
 .pr-detail-view {
     display: flex;
     flex-direction: column;
-    gap: 16px
+    gap: 16px;
+    overflow: visible !important;
+    height: auto !important;
 }
+
 
 .pr-detail-header {
     display: flex;
