@@ -85,6 +85,10 @@ function calcPositions(repoState) {
             }
         });
 
+        console.log('[calcPositions] branchX mapping:', branchX);
+        console.log('[calcPositions] branchHeads:', branchHeads);
+        console.log('[calcPositions] forkPoints:', forkPoints);
+
         // commits를 역순으로 처리 (오래된 커밋이 위에)
         const reversedCommits = [...commits].reverse();
 
@@ -100,6 +104,7 @@ function calcPositions(repoState) {
 
             let currentHash = headHash;
             const visited = new Set();
+            let isFirstCommit = true; // HEAD 커밋 추적
 
             // HEAD부터 forkPoint까지의 커밋들을 해당 브랜치로 표시
             while (currentHash && !visited.has(currentHash)) {
@@ -111,12 +116,32 @@ function calcPositions(repoState) {
 
                 if (!commit) break;
 
-                // forkPoint에 도달하면 중단
+                // forkPoint가 있으면 forkPoint에 도달하면 중단
                 if (forkPoint && (commit.hash === forkPoint || commit.hash.startsWith(forkPoint))) {
                     break;
                 }
 
-                branchCommitMap.set(commit.hash, branchName);
+                const commitBranches = commit.branches || [];
+
+                // HEAD 커밋은 무조건 해당 브랜치로 마킹
+                if (isFirstCommit) {
+                    branchCommitMap.set(commit.hash, branchName);
+                    isFirstCommit = false;
+                    currentHash = commit.parents?.[0];
+                    continue;
+                }
+
+                // forkPoint가 없는 경우: 이 커밋이 현재 브랜치에만 속하는지 확인
+                // forkPoint가 없고, 커밋이 main 브랜치에도 속한 경우 중단
+                if (!forkPoint && commitBranches.includes('main')) {
+                    break;
+                }
+
+                // 이 커밋을 현재 브랜치로 마킹 (나중에 덮어쓰지 않도록 조건부)
+                if (!branchCommitMap.has(commit.hash)) {
+                    branchCommitMap.set(commit.hash, branchName);
+                }
+
                 currentHash = commit.parents?.[0];
             }
         });
@@ -372,27 +397,51 @@ export default function RepositoryView() {
         api.repos
             .graph(repoId, { simplified: simplified ? "true" : undefined })
             .then((g) => {
+                // Helper function: branchHeads에서 시작하여 도달 가능한 모든 커밋 수집
+                const collectReachableCommits = (branchHeads, allCommits) => {
+                    const reachable = new Set();
+                    const queue = Object.values(branchHeads || {}).filter(Boolean);
+                    const visited = new Set();
+
+                    while (queue.length > 0) {
+                        const currentHash = queue.shift();
+                        if (!currentHash || visited.has(currentHash)) continue;
+                        visited.add(currentHash);
+
+                        // Find commit by hash (exact match or prefix match)
+                        const commit = allCommits.find(c =>
+                            c.hash === currentHash ||
+                            c.hash.startsWith(currentHash) ||
+                            c.shortHash === currentHash ||
+                            currentHash.startsWith(c.hash)
+                        );
+
+                        if (commit) {
+                            reachable.add(commit.hash);
+                            // Add all parents to queue
+                            if (commit.parents && Array.isArray(commit.parents)) {
+                                queue.push(...commit.parents);
+                            }
+                        }
+                    }
+
+                    return reachable;
+                };
+
                 // Local branches에서 도달 가능한 커밋만 필터링
                 const localBranchHeads = g?.local?.branchHeads || g?.branchHeads || {};
-                const localReachable = new Set();
-
-                // Local 브랜치별로 commits 추적
-                Object.values(g?.local?.branches || {}).forEach(commits => {
-                    commits.forEach(c => localReachable.add(c.hash));
-                });
+                const localReachable = collectReachableCommits(localBranchHeads, g?.commits || []);
 
                 const localCommits = (g?.commits || []).filter(c => localReachable.has(c.hash));
 
                 // Remote branches에서 도달 가능한 커밋만 필터링
                 const remoteBranchHeads = g?.remote?.branchHeads || {};
-                const remoteReachable = new Set();
+                const remoteReachable = collectReachableCommits(remoteBranchHeads, g?.commits || []);
 
-                // Remote 브랜치별로 commits 추적
-                Object.values(g?.remote?.branches || {}).forEach(commits => {
-                    commits.forEach(c => remoteReachable.add(c.hash));
-                });
-
-                const remoteCommits = (g?.commits || []).filter(c => remoteReachable.has(c.hash));
+                // Remote 그래프에서는 remoteIsHead를 isHead로 사용
+                const remoteCommits = (g?.commits || [])
+                    .filter(c => remoteReachable.has(c.hash))
+                    .map(c => ({ ...c, isHead: c.remoteIsHead }));
 
                 const localData = {
                     ...g?.local,
@@ -408,6 +457,18 @@ export default function RepositoryView() {
                     branchHeads: remoteBranchHeads,
                     forkPoints: g?.forkPoints,
                 };
+
+                // Debug: Remote 데이터 확인
+                console.log('[RepositoryView] Remote branchHeads:', remoteBranchHeads);
+                console.log('[RepositoryView] Remote forkPoints:', g?.forkPoints);
+                console.log('[RepositoryView] Remote commits sample (with branches):',
+                    remoteCommits.slice(0, 5).map(c => ({
+                        hash: c.shortHash,
+                        message: c.message,
+                        branches: c.branches,
+                        isHead: c.isHead
+                    }))
+                );
 
                 const normalized = { local: normGraph(localData), remote: normGraph(remoteData) };
 
@@ -506,20 +567,43 @@ export default function RepositoryView() {
             const g = await api.repos.graph(repoId);
             console.log('[Reset] 새 그래프:', g);
 
+            // Helper function: branchHeads에서 시작하여 도달 가능한 모든 커밋 수집
+            const collectReachableCommits = (branchHeads, allCommits) => {
+                const reachable = new Set();
+                const queue = Object.values(branchHeads || {}).filter(Boolean);
+                const visited = new Set();
+
+                while (queue.length > 0) {
+                    const currentHash = queue.shift();
+                    if (!currentHash || visited.has(currentHash)) continue;
+                    visited.add(currentHash);
+
+                    const commit = allCommits.find(c =>
+                        c.hash === currentHash ||
+                        c.hash.startsWith(currentHash) ||
+                        c.shortHash === currentHash ||
+                        currentHash.startsWith(c.hash)
+                    );
+
+                    if (commit) {
+                        reachable.add(commit.hash);
+                        if (commit.parents && Array.isArray(commit.parents)) {
+                            queue.push(...commit.parents);
+                        }
+                    }
+                }
+
+                return reachable;
+            };
+
             // Local branches에서 도달 가능한 커밋만 필터링
             const localBranchHeads = g?.local?.branchHeads || g?.branchHeads || {};
-            const localReachable = new Set();
-            Object.values(g?.local?.branches || {}).forEach(commits => {
-                commits.forEach(c => localReachable.add(c.hash));
-            });
+            const localReachable = collectReachableCommits(localBranchHeads, g?.commits || []);
             const localCommits = (g?.commits || []).filter(c => localReachable.has(c.hash));
 
             // Remote branches에서 도달 가능한 커밋만 필터링
             const remoteBranchHeads = g?.remote?.branchHeads || {};
-            const remoteReachable = new Set();
-            Object.values(g?.remote?.branches || {}).forEach(commits => {
-                commits.forEach(c => remoteReachable.add(c.hash));
-            });
+            const remoteReachable = collectReachableCommits(remoteBranchHeads, g?.commits || []);
             const remoteCommits = (g?.commits || []).filter(c => remoteReachable.has(c.hash));
 
             const localData = {
