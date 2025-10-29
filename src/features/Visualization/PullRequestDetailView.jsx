@@ -65,7 +65,9 @@ export default function PullRequestDetailView() {
     }, [reviews]);
 
     const isPrOpen = useMemo(() => {
-        return details?.state?.toUpperCase() === 'OPEN';
+        const normalizedState = String(details?.state || '').trim().toUpperCase();
+        if (!normalizedState) return true; // 상태 정보가 없으면 기본적으로 열림으로 간주
+        return normalizedState !== 'CLOSED' && normalizedState !== 'MERGED';
     }, [details]);
 
     const handleSubmitReview = async (status) => {
