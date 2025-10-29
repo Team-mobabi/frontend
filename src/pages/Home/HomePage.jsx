@@ -63,7 +63,6 @@ export default function HomePage(){
 
 
     const renderCurrentView = () => {
-        // ... (renderCurrentView 코드는 이전과 동일) ...
         switch (state.currentView) {
             case "graph":
                 return (

@@ -254,7 +254,12 @@ export default function ActionButtons() {
 
     const handleAddConfirm = async (selection) => {
         setOpenAdd(false);
-        if (!selection || selection.length === 0) return;
+        if (!selection || selection.length === 0) return; // 선택된 파일 없으면 종료
+
+        if (selection.length > 100) {
+            setToast("한 번에 100개까지만 파일을 추가할 수 있습니다.");
+            return;
+        }
 
         setBusy(true);
         try {

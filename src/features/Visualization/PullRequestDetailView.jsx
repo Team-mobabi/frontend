@@ -120,12 +120,14 @@ export default function PullRequestDetailView() {
             dispatch({ type: 'SET_VIEW', payload: 'prs' });
         } catch (e) {
             alert(`PR 닫기에 실패: ${e.message}`);
+            if (e.status === 409) {
+                fetchData();
+            }
         } finally {
             setIsSubmitting(false);
         }
     };
 
-    // [신규] Diff 텍스트에 색상을 적용하기 위한 헬퍼 함수
     const renderDiffPatch = (patch) => {
         if (!patch) {
             return <code style={{ color: 'var(--sub)' }}>이 파일에 대한 차이가 없습니다.</code>;

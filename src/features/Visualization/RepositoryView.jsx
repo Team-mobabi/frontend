@@ -10,6 +10,7 @@ import ConflictModal from "../../components/Modal/ConflictModal.jsx";
 import ResetConfirmModal from "../../components/Modal/ResetConfirmModal.jsx";
 import BeginnerHelp from "../../pages/BeginnerHelp.jsx";
 
+
 const Y = 85;
 const X = 180;
 

@@ -53,9 +53,9 @@ export default function PullRequestListView() {
                     {prList.map(pr => (
                         <div key={pr.id} className="pr-item" onClick={() => dispatch({ type: 'SELECT_PR', payload: pr.id })}>
                             <div className="pr-info">
-                                <h4 className="pr-title">#{pr.id} {pr.title}</h4>
+                                <h4 className="pr-title"># {pr.title}</h4>
                                 <div className="pr-meta">
-                                    {pr.author?.username || 'user'}가
+                                    {pr.author?.user || 'user'}가
                                     <span className="branch-chip">{pr.sourceBranch}</span>
                                     →
                                     <span className="branch-chip">{pr.targetBranch}</span>

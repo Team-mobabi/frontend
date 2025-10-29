@@ -73,7 +73,41 @@ export const api = {
     },
     user: {
         me: () => request("GET", "/users/me"),
-        search: (params) => request("GET", `/users/search${qs(params)}`),
+
+    },
+    users: {
+        search: (params) => {
+            return request("GET", `/users/search${qs(params)}`);
+        },
+    },
+    collaborators: {
+        /**
+         * (POST) 레포지토리에 협업자 추가
+         * @param {string} repoId
+         * @param {object} payload - { email: '...' } 또는 { userId: '...' }
+         */
+        add: (repoId, payload) => request("POST", `/repos/${repoId}/collaborators`, payload),
+
+        /**
+         * (GET) 레포지토리의 협업자 목록 조회
+         * @param {string} repoId
+         */
+        list: (repoId) => request("GET", `/repos/${repoId}/collaborators`),
+
+        /**
+         * (PATCH) 협업자의 권한 수정
+         * @param {string} repoId
+         * @param {string} userId
+         * @param {object} payload - { role: '...' } (예: 'admin', 'write', 'read')
+         */
+        updateRole: (repoId, userId, payload) => request("PATCH", `/repos/${repoId}/collaborators/${userId}`, payload),
+
+        /**
+         * (DELETE) 레포지토리에서 협업자 제거
+         * @param {string} repoId
+         * @param {string} userId
+         */
+        remove: (repoId, userId) => request("DELETE", `/repos/${repoId}/collaborators/${userId}`),
     },
     repos: {
         create: (payload) => request("POST", `/repos`, payload),
