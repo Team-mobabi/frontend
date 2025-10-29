@@ -73,7 +73,8 @@ export const api = {
     },
     user: {
         me: () => request("GET", "/users/me"),
-
+        changePassword: (payload) => request("PATCH", "/users/password", payload),
+        deleteAccount: () => request("DELETE", "/users/me"),
     },
     users: {
         search: (params) => {
