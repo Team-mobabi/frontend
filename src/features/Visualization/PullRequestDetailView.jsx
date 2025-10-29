@@ -10,6 +10,7 @@ export default function PullRequestDetailView() {
     const [error, setError] = useState(null)
     const [details, setDetails] = useState(null)
     const [diff, setDiff] = useState(null)
+    const [diffFiles, setDiffFiles] = useState([])
     const [reviews, setReviews] = useState([])
     const [newReviewText, setNewReviewText] = useState('')
     const [isSubmitting, setIsSubmitting] = useState(false)
@@ -25,7 +26,28 @@ export default function PullRequestDetailView() {
             api.pullRequests.listReviews(selectedRepoId, selectedPrId)
         ]).then(([detailsData, diffData, reviewsData]) => {
             setDetails(detailsData)
+            // diff 응답 정규화: 문자열 또는 파일 배열 모두 처리
             setDiff(diffData)
+            try {
+                const files = Array.isArray(diffData?.files)
+                    ? diffData.files
+                    : Array.isArray(diffData?.changedFiles)
+                        ? diffData.changedFiles
+                        : Array.isArray(diffData)
+                            ? diffData
+                            : [];
+                const normalized = files.map((f, idx) => ({
+                    id: f.id || idx,
+                    path: f.path || f.file || f.filename || f.name || 'unknown',
+                    status: (f.status || f.changeType || '').toLowerCase(),
+                    patch: f.patch || f.diff || '',
+                    additions: f.additions || f.added || 0,
+                    deletions: f.deletions || f.removed || 0,
+                }));
+                setDiffFiles(normalized);
+            } catch {
+                setDiffFiles([]);
+            }
             setReviews(reviewsData.reviews || reviewsData || [])
         }).catch(e => {
             setError(e.message || 'PR 정보를 불러오는 데 실패했습니다.')
@@ -145,9 +167,43 @@ export default function PullRequestDetailView() {
                     </div>
 
                     <h3 className="pr-section-title">변경 사항 (Diff)</h3>
-                    <pre className="pr-diff">
-                        <code>{diff?.diff || "변경 사항이 없거나 불러올 수 없습니다."}</code>
-                    </pre>
+                    {diffFiles.length > 0 ? (
+                        <div className="pr-diff-file-list" style={{ display: 'grid', gap: 12 }}>
+                            {diffFiles.map(file => (
+                                <div key={file.id || file.path} className="pr-diff-file">
+                                    <div className="pr-diff-file-header" style={{
+                                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                                        background: 'var(--panel-2)', border: '1px solid var(--line)', borderBottom: 'none',
+                                        padding: '8px 12px', borderTopLeftRadius: 8, borderTopRightRadius: 8
+                                    }}>
+                                        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                                            <span className="file-path" style={{ fontFamily: 'var(--font-mono)' }}>{file.path}</span>
+                                            {file.status && (
+                                                <span className="file-status" style={{ textTransform: 'uppercase', fontSize: 12, color: 'var(--sub)' }}>
+                                                    {file.status}
+                                                </span>
+                                            )}
+                                        </div>
+                                        {(file.additions || file.deletions) ? (
+                                            <div className="file-stats" style={{ fontSize: 12, color: 'var(--sub)' }}>
+                                                +{file.additions || 0} −{file.deletions || 0}
+                                            </div>
+                                        ) : null}
+                                    </div>
+                                    <pre className="pr-diff" style={{
+                                        margin: 0, border: '1px solid var(--line)', borderTop: 'none',
+                                        borderBottomLeftRadius: 8, borderBottomRightRadius: 8, overflowX: 'auto'
+                                    }}>
+                                        <code>{file.patch || '이 파일에 대한 차이가 없습니다.'}</code>
+                                    </pre>
+                                </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <pre className="pr-diff">
+                            <code>{(typeof diff === 'string' ? diff : diff?.diff) || '변경 사항이 없거나 불러올 수 없습니다.'}</code>
+                        </pre>
+                    )}
 
                     <h3 className="pr-section-title">리뷰 ({reviews.length})</h3>
                     <div className="review-list">
