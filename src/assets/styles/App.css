@@ -1087,8 +1087,6 @@ body {
     display: flex;
     flex-direction: column;
     gap: 16px;
-    overflow: visible !important;
-    height: auto !important;
 }
 
 
@@ -2718,4 +2716,25 @@ input:checked + .slider:before {
 .help-button:hover {
     background-color: #3a47c4; /* 호버 시 살짝 어둡게 */
     transform: scale(1.1); /* 호버 시 살짝 크게 */
+}
+
+/* --- PR 리뷰 폼 스타일 --- */
+.review-form {
+    display: grid;
+    gap: 12px;
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid var(--line);
+}
+
+.review-form textarea.input {
+    width: 100%;
+    box-sizing: border-box; /* 패딩이 너비를 넘지 않도록 */
+}
+
+/* 버튼들을 감싸는 영역 */
+.review-form-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end; /* 버튼들을 오른쪽으로 정렬 */
 }

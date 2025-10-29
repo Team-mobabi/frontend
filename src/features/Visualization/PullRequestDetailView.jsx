@@ -65,7 +65,9 @@ export default function PullRequestDetailView() {
     }, [reviews]);
 
     const isPrOpen = useMemo(() => {
-        return details?.state?.toUpperCase() === 'OPEN';
+        const normalizedState = String(details?.state || '').trim().toUpperCase();
+        if(!normalizedState) return true;
+        return normalizedState !== 'CLOSED' && normalizedState !== 'MERGED';
     }, [details]);
 
     const handleSubmitReview = async (status) => {
@@ -265,14 +267,14 @@ export default function PullRequestDetailView() {
                             <div className="review-form-actions">
                                 <button
                                     className="btn"
-                                    onClick={() => handleSubmitReview('COMMENTED')}
+                                    onClick={() => handleSubmitReview('commented')}
                                     disabled={isSubmitting || !newReviewText.trim()}
                                 >
                                     댓글
                                 </button>
                                 <button
                                     className="btn btn-success"
-                                    onClick={() => handleSubmitReview('APPROVED')}
+                                    onClick={() => handleSubmitReview('approved')}
                                     disabled={isSubmitting}
                                 >
                                     {isSubmitting ? '등록 중...' : '승인'}
