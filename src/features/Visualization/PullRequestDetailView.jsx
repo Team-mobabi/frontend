@@ -102,6 +102,7 @@ export default function PullRequestDetailView() {
         setIsSubmitting(true)
         try {
             await api.pullRequests.merge(selectedRepoId, selectedPrId)
+            await fetchData()
             dispatch({ type: 'GRAPH_DIRTY' })
             dispatch({ type: 'SET_VIEW', payload: 'prs' })
         } catch (e) {
