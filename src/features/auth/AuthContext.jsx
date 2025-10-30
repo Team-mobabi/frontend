@@ -12,7 +12,7 @@ export function AuthProvider({ children }) {
             try {
                 const t = getToken();
                 if (t) {
-                    const me = await api.user.me();
+                    const me = await api.users.me(); // 'user' -> 'users' (복수)
                     setUser(me);
                 } else {
                     setUser(null);
@@ -30,7 +30,7 @@ export function AuthProvider({ children }) {
     }, []);
 
     const refresh = async () => {
-        const me = await api.user.me();
+        const me = await api.users.me(); // 'user' -> 'users' (복수)
         setUser(me);
         return me;
     };
@@ -40,21 +40,34 @@ export function AuthProvider({ children }) {
             localStorage.removeItem("selectedRepoId");
         } catch {}
 
-        const res = await api.auth.signin({ email, password });
-        const token = res?.token || res?.accessToken || res?.access_token || res?.jwt || res?.id_token;
-        if (!token) throw new Error("로그인 토큰을 받지 못했습니다.");
-        setToken(token);
+        // 'signin' -> 'login' (API.js 명세 기준)
+        const res = await api.auth.login({ email, password });
+
+        // RefreshToken 저장 로직 (이전 요청사항 반영)
+        const accessToken = res?.accessToken;
+        const refreshToken = res?.refreshToken;
+
+        if (!accessToken || !refreshToken) {
+            throw new Error("로그인 토큰을 받지 못했습니다.");
+        }
+
+        setToken(accessToken, refreshToken);
         return await refresh();
     };
 
-    const signout = async () => {
-        try { await api.auth.signout(); } catch {}
+    const logout = async () => { // 'signout' -> 'logout'
+        try {
+            await api.auth.logout(); // 'signout' -> 'logout' (API.js 명세 기준)
+        } catch (err) {
+            console.error("Logout API failed:", err);
+        }
+
         clearToken();
         setUser(null);
         try {
             localStorage.removeItem("selectedRepoId");
         } catch {}
-        // 스플래쉬 화면으로 이동하도록 경로 수정 (베이스 URL 고려)
+
         try {
             const base = (typeof import.meta !== 'undefined' && import.meta.env?.BASE_URL) || "/mobabi/ui";
             window.location.assign(`${base}/`);
@@ -64,7 +77,7 @@ export function AuthProvider({ children }) {
     };
 
     return (
-        <AuthCtx.Provider value={{ user, busy, setUser, refresh, login, signout }}>
+        <AuthCtx.Provider value={{ user, busy, setUser, refresh, login, logout }}>
             {children}
         </AuthCtx.Provider>
     );

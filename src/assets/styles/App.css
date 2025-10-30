@@ -2819,20 +2819,14 @@ input:checked + .slider:before {
     text-transform: uppercase;
     line-height: 1.4;
 }
-
-/* 열림 (Open) - 초록색 */
 .pr-state-chip.open {
     color: var(--success);
     background-color: var(--success-light);
 }
-
-/* 닫힘 (Closed) - 빨간색 */
 .pr-state-chip.closed {
     color: var(--danger);
     background-color: var(--danger-light);
 }
-
-/* 병합됨 (Merged) - 보라색 */
 .pr-state-chip.merged {
     color: var(--accent);
     background-color: var(--accent-light);

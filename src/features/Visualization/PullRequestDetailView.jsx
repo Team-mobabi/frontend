@@ -171,7 +171,7 @@ export default function PullRequestDetailView() {
             {!loading && details && (
                 <>
                     <div className="pr-detail-header">
-                        <h2>#{details.id} {details.title}</h2>
+                        <h2># {details.title}</h2>
                         {isPrOpen ? (
                             <div className="pr-detail-actions">
                                 <button className="btn" onClick={handleClosePr} disabled={isSubmitting}>

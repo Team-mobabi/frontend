@@ -21,9 +21,9 @@ export default function RemoteConnectModal({ open, repoId, onClose, onConnected 
         setBusy(true);
         try {
             const remoteName = (name || "origin").trim() || "origin";
-            await api.repos.connectRemote(repoId, { url: u, name: remoteName });
+            await api.repos.addRemote(repoId, { url: u, name: remoteName });
             onConnected?.({ type: "remote", name: remoteName, url: u });
-            onClose?.(); // ✅ 모달 즉시 닫기
+            onClose?.();
         } catch (e) {
             const msg = (e?.data?.message || e?.message || "원격 연결에 실패했어요.").toString();
             setErr(Array.isArray(msg) ? msg.join("\n") : msg);
@@ -34,16 +34,16 @@ export default function RemoteConnectModal({ open, repoId, onClose, onConnected 
 
     const connectLocal = async () => {
         setErr("");
-        const ln = (localName || "").trim();
-        if (!ln) {
-            setErr("로컬 원격 이름을 입력하세요.");
+        const n = localName.trim();
+        if (!n || n.includes(" ") || !/^[a-zA-Z0-9-_]+$/.test(n)) {
+            setErr("유효한 로컬 원격 이름을 입력하세요 (공백, 특수문자 제외).");
             return;
         }
         setBusy(true);
         try {
-            const res = await api.repos.connectRemoteLocal(repoId, { name: ln });
-            onConnected?.({ type: "local", name: res?.remoteName || ln, url: res?.remotePath });
-            onClose?.(); // ✅ 로컬 연결 후도 즉시 닫기
+            await api.repos.addLocalRemote(repoId, { name: n });
+            onConnected?.({ type: "local", name: n });
+            onClose?.();
         } catch (e) {
             const msg = (e?.data?.message || e?.message || "로컬 원격 생성에 실패했어요.").toString();
             setErr(Array.isArray(msg) ? msg.join("\n") : msg);
@@ -54,19 +54,22 @@ export default function RemoteConnectModal({ open, repoId, onClose, onConnected 
 
     return (
         <div className="modal-backdrop" onClick={onClose}>
-            <div className="modal" onClick={(e)=>e.stopPropagation()} style={{ width: 560 }}>
+            <div className="modal" onClick={(e) => e.stopPropagation()} style={{ width: 420 }}>
                 <div className="modal-head">
                     <h4>원격 저장소 연결</h4>
                     <button className="modal-close" onClick={onClose}>×</button>
                 </div>
-
-                <div className="modal-body" style={{ display:"grid", gap:12 }}>
-                    <div style={{ display:"flex", gap:8 }}>
-                        <button className={`btn ${tab==="remote" ? "btn-primary" : ""}`} onClick={()=>setTab("remote")} disabled={busy}>GitHub 등 원격</button>
-                        <button className={`btn ${tab==="local" ? "btn-primary" : ""}`} onClick={()=>setTab("local")} disabled={busy}>로컬 백업 원격</button>
+                <div className="modal-body">
+                    <div className="tabs">
+                        <button className={`tab ${tab === "remote" ? "active" : ""}`} onClick={() => setTab("remote")}>
+                            URL로 연결
+                        </button>
+                        <button className={`tab ${tab === "local" ? "active" : ""}`} onClick={() => setTab("local")}>
+                            로컬 원격 생성
+                        </button>
                     </div>
 
-                    {tab==="remote" ? (
+                    {tab === "remote" ? (
                         <div style={{ display:"grid", gap:10 }}>
                             <input className="input" placeholder="원격 URL (예: https://github.com/user/repo.git)" value={url} onChange={(e)=>setUrl(e.target.value)} disabled={busy}/>
                             <input className="input" placeholder="원격 이름 (기본: origin)" value={name} onChange={(e)=>setName(e.target.value)} disabled={busy}/>

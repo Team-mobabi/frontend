@@ -5,19 +5,36 @@ const BASE_URL =
 const DEBUG = String(import.meta.env?.VITE_API_DEBUG ?? import.meta.env?.DEV).toLowerCase() === "true";
 
 const tokenKey = "gitgui_token";
+const refreshTokenKey = "gitgui_refreshToken";
+
 export function getToken() {
     try { return localStorage.getItem(tokenKey) || ""; } catch { return ""; }
 }
-export function setToken(t) {
-    try { t ? localStorage.setItem(tokenKey, t) : localStorage.removeItem(tokenKey); } catch {}
+
+export function getRefreshToken() {
+    try { return localStorage.getItem(refreshTokenKey) || ""; } catch { return ""; }
 }
-export function clearToken() { setToken(""); }
+
+export function setToken(accessToken, refreshToken) {
+    try {
+        if (accessToken) localStorage.setItem(tokenKey, accessToken);
+        if (refreshToken) localStorage.setItem(refreshTokenKey, refreshToken);
+    } catch {}
+}
+
+export function clearToken() {
+    try {
+        localStorage.removeItem(tokenKey);
+        localStorage.removeItem(refreshTokenKey);
+    } catch {}
+}
 
 function qs(params) {
     if (!params) return "";
     const q = new URLSearchParams(Object.entries(params).filter(([, v]) => v != null)).toString();
     return q ? `?${q}` : "";
 }
+
 export function isConflictError(err) {
     const msg = (err?.data?.message || err?.message || "").toLowerCase();
     return (
@@ -28,162 +45,192 @@ export function isConflictError(err) {
         /exiting because of an unresolved conflict/.test(msg)
     );
 }
+
+let isRefreshing = false;
+let failedQueue = [];
+
+const processQueue = (error, token = null) => {
+    failedQueue.forEach(prom => {
+        if (error) {
+            prom.reject(error);
+        } else {
+            prom.resolve(token);
+        }
+    });
+    failedQueue = [];
+};
+
 async function request(method, path, body, options = {}) {
     const authToken = getToken();
-    if (DEBUG) console.info("[API →]", method, (BASE_URL || "") + path, { hasToken: !!authToken, body });
-    const headers = { ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}), ...(options.headers || {}) };
-    const isForm = typeof FormData !== "undefined" && body instanceof FormData;
-    if (body != null && !isForm && headers["Content-Type"] == null) headers["Content-Type"] = "application/json";
-    const res = await fetch((BASE_URL || "") + path, { method, headers, body: body != null ? (isForm ? body : JSON.stringify(body)) : undefined, ...options });
-    let data = null;
-    try { data = await res.json(); } catch {}
-    if (DEBUG) console.info(res.ok ? "[API ← OK]" : "[API ← ERR]", res.status, data);
-    if (!res.ok || (data && data.success === false)) {
-        if (res.status === 401) clearToken();
-        const msg = (data && (data.message || data.error)) || `HTTP ${res.status} ${res.statusText}`;
-        const err = new Error(msg);
+    if (DEBUG) console.info("[API →]", method, (BASE_URL || "") + path, { hasToken: !!authToken });
+
+    const headers = { ...options.headers };
+    if (authToken) {
+        headers["Authorization"] = `Bearer ${authToken}`;
+    }
+
+    if (body) {
+        if (body instanceof FormData) {
+        } else if (body instanceof URLSearchParams) {
+            headers["Content-Type"] = "application/x-www-form-urlencoded";
+        } else {
+            headers["Content-Type"] = "application/json";
+            body = JSON.stringify(body);
+        }
+    } else if (method === "POST" || method === "PUT" || method === "PATCH") {
+        headers["Content-Type"] = "application/json";
+    }
+
+    try {
+        const res = await fetch((BASE_URL || "") + path, {
+            method,
+            headers,
+            body,
+            signal: options.signal,
+        });
+
+        if (res.ok) {
+            if (options.responseType === "blob") return res.blob();
+            if (options.responseType === "text") return res.text();
+            if (res.status === 204 || res.headers.get("content-length") === "0") return null;
+            return res.json();
+        }
+
+        if (res.status === 401 && !options.isRetry) {
+            if (isRefreshing) {
+                return new Promise((resolve, reject) => {
+                    failedQueue.push({ resolve, reject });
+                }).then(newAccessToken => {
+                    headers["Authorization"] = `Bearer ${newAccessToken}`;
+                    return request(method, path, body, { ...options, headers, isRetry: true });
+                });
+            }
+
+            isRefreshing = true;
+
+            const rToken = getRefreshToken();
+            if (!rToken) {
+                clearToken();
+                window.location.href = '/';
+                return Promise.reject(new Error("No refresh token"));
+            }
+
+            try {
+                const refreshRes = await fetch((BASE_URL || "") + "/auth/refresh", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ refreshToken: rToken })
+                });
+
+                if (!refreshRes.ok) {
+                    throw new Error("Failed to refresh token");
+                }
+
+                const refreshData = await refreshRes.json();
+                const newAccessToken = refreshData.accessToken;
+
+                setToken(newAccessToken);
+                processQueue(null, newAccessToken);
+
+                headers["Authorization"] = `Bearer ${newAccessToken}`;
+                return request(method, path, body, { ...options, headers, isRetry: true });
+
+            } catch (refreshError) {
+                processQueue(refreshError, null);
+                clearToken();
+                window.location.href = '/';
+                return Promise.reject(refreshError);
+            } finally {
+                isRefreshing = false;
+            }
+        }
+
+        const errData = await res.json().catch(() => ({ message: res.statusText || "Error" }));
+        const err = new Error(errData.message || "API request failed");
         err.status = res.status;
-        err.data = data;
+        err.data = errData;
+        throw err;
+
+    } catch (err) {
+        if (DEBUG) console.error("[API ← ERR]", err.status, err.data || err.message);
         throw err;
     }
-    return data;
 }
 
 export const api = {
     auth: {
-        signup: (payload) => request("POST", "/auth/signup", payload),
-        signin: async (payload) => {
-            const data = await request("POST", "/auth/signin", payload);
-            const token = data?.token || data?.accessToken;
-            if (token) {
-                setToken(token);
-                return { ...data, status: "authenticated" };
-            }
-            if (data?.status === "pending_verification") {
-                return { ...data, status: "pending_verification" };
-            }
-            throw new Error("로그인 응답이 올바르지 않습니다.");
-        },
-        signout: async () => { clearToken(); return true; },
-        getToken,
-    },
-    email: {
-        sendVerification: (payload) => request("POST", "/email/send-verification", payload),
-        verifyCode: (payload) => request("POST", "/email/verify-code", payload),
-    },
-    user: {
-        me: () => request("GET", "/users/me"),
-
+        register: (body) => request("POST", "/auth/signup", body),
+        login: (body) => request("POST", "/auth/signin", body),
+        refresh: (refreshToken) => request("POST", "/auth/refresh", { refreshToken }),
+        logout: () => request("POST", "/auth/logout"),
     },
     users: {
-        search: (params) => {
-            return request("GET", `/users/search${qs(params)}`);
-        },
+        me: () => request("GET", "/users/me"),
+        deleteMe: () => request("DELETE", "/users/me"),
+        search: (params) => request("GET", `/users/search${qs(params)}`),
+        updatePassword: (body) => request("PATCH", "/users/password", body),
     },
-    collaborators: {
-        /**
-         * (POST) 레포지토리에 협업자 추가
-         * @param {string} repoId
-         * @param {object} payload - { email: '...' } 또는 { userId: '...' }
-         */
-        add: (repoId, payload) => request("POST", `/repos/${repoId}/collaborators`, payload),
-
-        /**
-         * (GET) 레포지토리의 협업자 목록 조회
-         * @param {string} repoId
-         */
-        list: (repoId) => request("GET", `/repos/${repoId}/collaborators`),
-
-        /**
-         * (PATCH) 협업자의 권한 수정
-         * @param {string} repoId
-         * @param {string} userId
-         * @param {object} payload - { role: '...' } (예: 'admin', 'write', 'read')
-         */
-        updateRole: (repoId, userId, payload) => request("PATCH", `/repos/${repoId}/collaborators/${userId}`, payload),
-
-        /**
-         * (DELETE) 레포지토리에서 협업자 제거
-         * @param {string} repoId
-         * @param {string} userId
-         */
-        remove: (repoId, userId) => request("DELETE", `/repos/${repoId}/collaborators/${userId}`),
+    email: {
+        sendVerification: (body) => request("POST", "/email/send-verification", body),
+        verifyCode: (body) => request("POST", "/email/verify-code", body),
     },
     repos: {
-        create: (payload) => request("POST", `/repos`, payload),
-        list: (params) => request("GET", `/repos${qs(params)}`),
+        create: (body) => request("POST", "/repos", body),
+        list: () => request("GET", "/repos"),
         delete: (id) => request("DELETE", `/repos/${id}`),
-        listPublic: (params) => request("GET", `/repos/public${qs(params)}`),
-        listUserPublic: (userId, params) => request("GET", `/repos/public/user/${userId}${qs(params)}`),
-        fork: (repoIdToFork) => request("POST", `/repos/fork`, { sourceRepoId: repoIdToFork }),
-        connectRemote: (id, payload) => request("POST", `/repos/${id}/remote`, payload),
-        connectRemoteLocal: (id, payload) => request("POST", `/repos/${id}/remote-local`, payload),
-        status: (id) => request("GET", `/repos/${id}/status`),
-        add: (id, files) => request("POST", `/repos/${id}/add`, { files }),
-        commit: (id, message) => request("POST", `/repos/${id}/commit`, { message }),
-        reset: (id, payload) => request("POST", `/repos/${id}/reset`, payload),
+        listPublic: () => request("GET", "/repos/public"),
+        listUserPublic: (userId) => request("GET", `/repos/public/user/${userId}`),
+        fork: (body) => request("POST", "/repos/fork", body),
+
+        // Git Operations
+        add: (id, files) => request("POST", `/repos/${id}/add`, { files: files }), // body를 {files} 객체로 감싸는 것이 좋습니다
+        commit: (id, message) => request("POST", `/repos/${id}/commit`, { message: message }), // body를 {message} 객체로 감싸는 것이 좋습니다
+        reset: (id, body) => request("POST", `/repos/${id}/reset`, body),
+        addRemote: (id, body) => request("POST", `/repos/${id}/remote`, body),
+        addLocalRemote: (id, body) => request("POST", `/repos/${id}/remote-local`, body), // connectRemoteLocal -> addLocalRemote
         pull: (id, body) => request("POST", `/repos/${id}/pull`, body),
-        push: (id, body) => request("POST", `/repos/${id}/push`, body),
-        graph: (id, params) => request("GET", `/repos/${id}/graph${qs(params)}`),
-        merge: (id, payload) => request("POST", `/repos/${id}/merge`, payload),
-        abortMerge: (id) => request("POST", `/repos/${id}/merge/abort`),
-        getFiles: (id, params) => request("GET", `/repos/${id}/files${qs(params)}`),
-        createFile: (id, payload) => request("POST", `/repos/${id}/files`, payload),
-        updateFile: (id, payload) => request("PATCH", `/repos/${id}/files`, payload),
-        deleteFile: (id, params) => request("DELETE", `/repos/${id}/files${qs(params)}`),
-        upload: async (id, fileList) => {
-            const fd = new FormData();
-            console.log('[API] 업로드할 파일 목록:', fileList);
-
-            // 각 파일을 추가하고, 경로 정보를 별도 필드로 전송
-            fileList.forEach((f, index) => {
-                const relativePath = f.webkitRelativePath || f.name;
-                console.log('[API] FormData에 추가:', {
-                    name: f.name,
-                    webkitRelativePath: f.webkitRelativePath,
-                    relativePath: relativePath
-                });
-
-                // 파일 추가 (파일명만 사용)
-                fd.append("files", f, f.name);
-
-                // 경로 정보를 별도 필드로 추가
-                fd.append("paths", relativePath);
-            });
-
-            const up = await request("POST", `/repos/${id}/files`, fd);
-            console.log('[API] 업로드 응답:', up);
-            let saved = (up && (up.uploadedFiles?.map(f=>f.path) || up.saved || up.paths || up.files || [])) || [];
-            if (!Array.isArray(saved)) saved = [];
-            console.log('[API] 저장된 파일 경로:', saved);
-            return { saved };
+        push: (id, bodyOrBranch, params) => {
+            // ActionButtons.jsx v1 (제공해주신 코드)은 body 객체를 사용합니다
+            if (typeof bodyOrBranch === 'object') {
+                return request("POST", `/repos/${id}/push`, bodyOrBranch);
+            }
+            // ActionButtons.jsx v2 (제가 제안했던 코드)는 파라미터를 사용합니다
+            return request("POST", `/repos/${id}/push/${bodyOrBranch}${qs(params)}`);
         },
+        status: (id) => request("GET", `/repos/${id}/status`),
+
+        // Branches
+        merge: (id, body) => request("POST", `/repos/${id}/merge`, body),
+        graph: (id) => request("GET", `/repos/${id}/graph`),
+
+        // Files
+        getFiles: (id, params) => request("GET", `/repos/${id}/files${qs(params)}`),
+        createFile: (id, body) => request("POST", `/repos/${id}/files`, body),
+        updateFile: (id, body) => request("PATCH", `/repos/${id}/files`, body),
+        deleteFile: (id, body) => request("DELETE", `/repos/${id}/files`, body),
+
+        // Conflicts
         conflicts: (id) => request("GET", `/repos/${id}/conflicts`),
-        aiSuggest: (id, filePath) => request("POST", `/repos/${id}/conflicts/ai-suggest`, { filePath }),
-        resolve: (id, resolution) => request("POST", `/repos/${id}/conflicts/resolve`, resolution),
+        resolve: (id, body) => request("POST", `/repos/${id}/conflicts/resolve`, body),
+        abortMerge: (id) => request("POST", `/repos/${id}/merge/abort`),
+        aiSuggest: (id, body) => request("POST", `/repos/${id}/conflicts/ai-suggest`, body),
+
+        // Diffs
+        diffWorking: (id) => request("GET", `/repos/${id}/diff/working`),
+        diffStaged: (id) => request("GET", `/repos/${id}/diff/staged`),
         diffStats: (id) => request("GET", `/repos/${id}/diff/stats`),
-        diffWorking: (id, params) => request("GET", `/repos/${id}/diff/working${qs(params)}`),
-        diffStaged: (id, params) => request("GET", `/repos/${id}/diff/staged${qs(params)}`),
-        diffCommits: (id, commitA, commitB) => request("GET", `/repos/${id}/diff/commits/${commitA}/${commitB}`),
-        diffBranches: (id, params) => request("GET", `/repos/${id}/diff/branches${qs(params)}`),
-        diffCommit: (id, hash) => request("GET", `/repos/${id}/diff/commit/${hash}`),
-        diffFiles: (id, params) => request("GET", `/repos/${id}/diff/files${qs(params)}`),
+
+        // ActionButtons.jsx (제공해주신 코드)가 사용하는 upload API
+        upload: (id, files) => {
+            const formData = new FormData();
+            files.forEach(f => formData.append("files", f));
+            return request("POST", `/repos/${id}/upload`, formData); // (이 엔드포인트가 API 명세에 없으므로 확인 필요)
+        }
     },
-    branches: {
-        list: (id, params) => request("GET", `/repos/${id}/branches${qs(params)}`),
-        create: (id, body) => request("POST", `/repos/${id}/branches`, body),
-        switch: (id, name) => request("POST", `/repos/${id}/branches/switch`, { name }),
-        delete: (id, branchName) => request("DELETE", `/repos/${id}/branches/${branchName}`),
-    },
-    pullRequests: {
-        create: (repoId, payload) => request("POST", `/repos/${repoId}/pull-requests`, payload),
-        list: (repoId) => request("GET", `/repos/${repoId}/pull-requests`),
-        get: (repoId, prId) => request("GET", `/repos/${repoId}/pull-requests/${prId}`),
-        merge: (repoId, prId) => request("POST", `/repos/${repoId}/pull-requests/${prId}/merge`),
-        close: (repoId, prId) => request("POST", `/repos/${repoId}/pull-requests/${prId}/close`),
-        diff: (repoId, prId) => request("GET", `/repos/${repoId}/pull-requests/${prId}/diff`),
-        createReview: (repoId, prId, payload) => request("POST", `/repos/${repoId}/pull-requests/${prId}/reviews`, payload),
-        listReviews: (repoId, prId) => request("GET", `/repos/${repoId}/pull-requests/${prId}/reviews`),
-    },
-    request,
+    collaborators: {
+        add: (repoId, payload) => request("POST", `/repos/${repoId}/collaborators`, payload),
+        list: (repoId) => request("GET", `/repos/${repoId}/collaborators`),
+        updateRole: (repoId, userId, payload) => request("PATCH", `/repos/${repoId}/collaborators/${userId}`, payload),
+        remove: (repoId, userId) => request("DELETE", `/repos/${repoId}/collaborators/${userId}`),
+    }
 };

@@ -141,7 +141,18 @@ export default function ActionButtons() {
                 }
                 setPushTargetBranch(currentBranch);
 
+                const hasNoLocalCommits = localBranches.length === 0;
+                const hasNoRemoteCommits = remoteBranchesList.length === 0;
                 const stagedFiles = Array.isArray(st?.files) ? st.files : [];
+
+                setNeedsInitialPush(false);
+
+                if (hasNoLocalCommits && hasNoRemoteCommits && stagedFiles.length === 0) {
+                    setNeedsInitialPush(true);
+                    setStep(1);
+                    return;
+                }
+
                 const localCommitsToPush = findMissingCommits(graph, currentBranch, "push");
 
                 const remoteBranches = graph?.remote?.branches || {};
@@ -159,7 +170,7 @@ export default function ActionButtons() {
                 } else if (st.isEmpty) {
                     setNeedsInitialPush(true);
                     setStep(1);
-                } else if (step > 2) {
+                } else {
                     setStep(1);
                 }
             })
@@ -254,7 +265,7 @@ export default function ActionButtons() {
 
     const handleAddConfirm = async (selection) => {
         setOpenAdd(false);
-        if (!selection || selection.length === 0) return; // 선택된 파일 없으면 종료
+        if (!selection || selection.length === 0) return;
 
         if (selection.length > 100) {
             setToast("한 번에 100개까지만 파일을 추가할 수 있습니다.");
@@ -263,13 +274,9 @@ export default function ActionButtons() {
 
         setBusy(true);
         try {
-            const uploadResult = await api.repos.upload(repoId, selection);
-            const uploadedFileNames = Array.isArray(uploadResult?.saved) ? uploadResult.saved : [];
+            await api.repos.add(repoId, selection);
 
-            if (uploadedFileNames.length > 0) {
-                await api.repos.add(repoId, uploadedFileNames);
-            }
-            const stagedNames = uploadedFileNames;
+            const stagedNames = selection;
 
             if (stagedNames.length > 0) {
                 dispatch({ type: "ADD_SELECTED", payload: stagedNames });
@@ -454,7 +461,8 @@ export default function ActionButtons() {
     };
 
     const lock1 = step !== 1 || busy;
-    const lock2 = (step !== 2 && (step !== 1 || !needsInitialPush)) || busy;
+    const lock2 = (needsInitialPush && step === 1) ? true : (step !== 2 || busy);
+
     const lock3 = step !== 3 || busy;
     const lock4 = step !== 4 || !hasPushableCommits || busy;
 
