@@ -166,6 +166,7 @@ async function request(method, path, body, options = {}) {
 export const api = {
     auth: {
         register: (payload) => request("POST", "/auth/signup", payload),
+        signup: (payload) => request("POST", "/auth/signup", payload), // register의 alias
         login: async (payload) => {
             const data = await request("POST", "/auth/signin", payload);
             const accessToken = data?.accessToken;
