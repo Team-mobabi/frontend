@@ -1,12 +1,13 @@
 import React, {useEffect, useState} from 'react'
 import {useGit} from '../GitCore/GitContext'
 import {api} from '../API'
+import { getUserDisplayName } from '../../utils/userDisplay.js'
 import CreatePullRequestModal from '../../components/Modal/CreatePullRequestModal.jsx'
 
 export default function PullRequestListView() {
     const {state, dispatch} = useGit()
     const {selectedRepoId, prList} = state
-    const [loading, setLoading] = useState(true)
+    const [loading, setLoading] = useState(prList.length === 0)
     const [error, setError] = useState(null)
     const [modalOpen, setModalOpen] = useState(false)
 
@@ -26,6 +27,12 @@ export default function PullRequestListView() {
     useEffect(() => {
         fetchPRs()
     }, [selectedRepoId, dispatch, state.graphVersion])
+
+    useEffect(() => {
+        if (prList.length > 0) {
+            setLoading(false)
+        }
+    }, [prList])
 
     // 병합은 상세 화면에서만 가능 (리뷰 승인 필요)
     const openDetail = (prId, e) => {
@@ -50,36 +57,46 @@ export default function PullRequestListView() {
                     {prList.length === 0 && (
                         <div className="empty" style={{padding: '40px 0'}}>열려있는 Pull Request가 없습니다.</div>
                     )}
-                    {prList.map(pr => (
-                        <div key={pr.id} className="pr-item"
-                             onClick={() => dispatch({type: 'SELECT_PR', payload: pr.id})}>
-                            <div className="pr-info">
-                                <h4 className="pr-title"># {pr.title}</h4>
-                                <div className="pr-meta">
-                                    <span className={`pr-state-chip ${pr.status?.toLowerCase()}`}>
-                                        {pr.status}
-                                    </span>
+                    {prList.map(pr => {
+                        const normalizedState = String(pr.state || pr.status || '').trim().toUpperCase() || 'OPEN';
+                        const statusLabel = pr.status || pr.state || 'OPEN';
+                        const authorName = getUserDisplayName(pr.author);
 
-                                    {pr.author?.user || 'user'}가
-                                    <span className="branch-chip">{pr.sourceBranch}</span>
-                                    →
-                                    <span className="branch-chip">{pr.targetBranch}</span>
-                                    브랜치로 병합을 요청합니다.
+                        return (
+                            <div
+                                key={pr.id}
+                                className="pr-item"
+                                onClick={() => dispatch({type: 'SELECT_PR', payload: pr.id})}
+                            >
+                                <div className="pr-info">
+                                    <h4 className="pr-title"># {pr.title}</h4>
+                                    <div className="pr-meta">
+                                        <span className={`pr-state-chip ${statusLabel?.toLowerCase()}`}>
+                                            {statusLabel}
+                                        </span>
+
+                                        {authorName}가
+                                        <span className="branch-chip">{pr.sourceBranch}</span>
+                                        →
+                                        <span className="branch-chip">{pr.targetBranch}</span>
+                                        브랜치로 병합을 요청합니다.
+                                    </div>
+                                </div>
+                                <div className="pr-actions">
+                                    {/* 병합은 상세 화면에서 승인 리뷰가 있어야 가능 */}
+                                    {normalizedState === 'OPEN' ? (
+                                        <button className="btn btn-primary" onClick={(e) => openDetail(pr.id, e)}>
+                                            검토/병합
+                                        </button>
+                                    ) : (
+                                        <span className="pr-state-chip" style={{textTransform: 'uppercase'}}>
+                                            {statusLabel}
+                                        </span>
+                                    )}
                                 </div>
                             </div>
-                            <div className="pr-actions">
-                                {/* 병합은 상세 화면에서 승인 리뷰가 있어야 가능 */}
-                                {pr.state?.toUpperCase() === 'OPEN' ? (
-                                    <button className="btn btn-primary" onClick={(e) => openDetail(pr.id, e)}>
-                                        검토/병합
-                                    </button>
-                                ) : (
-                                    <span className="pr-state-chip"
-                                          style={{textTransform: 'uppercase'}}>{pr.state}</span>
-                                )}
-                            </div>
-                        </div>
-                    ))}
+                        );
+                    })}
                 </div>
             )}
 

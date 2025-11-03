@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useGit } from "../../features/GitCore/GitContext";
 import { api } from "../../features/API";
+import DiffView from "../Diff/DiffView";
 import AddModal from "./AddModal";
 import StagingSummary from "./StagingSummary";
 import RemoteConnectModal from "../../components/Modal/RemoteConnectModal.jsx";
@@ -9,6 +10,12 @@ import CommitConfirmModal from "../../components/Modal/CommitConfirmModal";
 
 // 단계 라벨 수정
 const STEP_LABEL = { 1: "서버에서 최신 내용 가져오기", 2: "변경된 파일 담기", 3: "변경 내용 설명 쓰고 저장", 4: "서버에 올리기" };
+const STEP_GUIDE = {
+    1: "먼저 원격 저장소와 상태를 맞춰 주세요. 가져오기를 실행하면 서버에서 최신 내용을 받아옵니다.",
+    2: "다음 버전에 포함할 파일을 고르고 담아 주세요. 선택된 파일은 스테이징 영역에 모입니다.",
+    3: "담긴 파일들의 변경 이유를 메시지로 남기고 저장합니다. 저장 후에는 서버에 올리기가 준비됩니다.",
+    4: "준비된 커밋을 선택한 브랜치로 업로드합니다. 필요하다면 변경 사항을 다시 확인해 주세요.",
+};
 
 // --- Helper Functions ---
 // (내부 로직 함수는 용어 변경 불필요)
@@ -112,6 +119,10 @@ export default function ActionButtons() {
     const [isDivergedPush, setIsDivergedPush] = useState(false); // Force push 필요 여부
     const [commitModalOpen, setCommitModalOpen] = useState(false); // '버전 저장 확인' 모달
     const [hasPushableCommits, setHasPushableCommits] = useState(false); // Push 가능한 커밋 존재 여부
+    const [showGuide, setShowGuide] = useState(true);
+    const [processNotice, setProcessNotice] = useState("");
+    const [noticeType, setNoticeType] = useState("info");
+    const [showChangesPanel, setShowChangesPanel] = useState(false);
 
     // --- Effects ---
     useEffect(() => {
@@ -179,8 +190,23 @@ export default function ActionButtons() {
     // --- Handlers ---
     const fail = (e, fb) => setToast(e?.message || fb || "오류가 발생했어요.");
 
+    useEffect(() => {
+        setProcessNotice("");
+        setNoticeType("info");
+        setShowGuide(true);
+    }, [step]);
+
+    const showGuideNotice = (message, type = "warning") => {
+        setProcessNotice(message);
+        setNoticeType(type);
+        setShowGuide(true);
+    };
+
     const guard = (targetStep, fn) => {
-        if (!repoId) return setToast("프로젝트 저장 공간을 먼저 선택해주세요.");
+        if (!repoId) {
+            showGuideNotice("프로젝트 저장 공간을 먼저 선택해주세요.");
+            return;
+        }
 
         // 예외: step 1에서 파일 담기(step 2) 허용 (가져오기 건너뛰기)
         const allowSkipPull = step === 1 && targetStep === 2;
@@ -188,11 +214,13 @@ export default function ActionButtons() {
         const allowPush = targetStep === 4 && hasPushableCommits;
 
         if (step !== targetStep && !allowSkipPull && !allowPush && !(needsInitialPush && targetStep === 2 && step === 1)) {
-            // 현재 단계가 아니면 안내 메시지 표시
-            setToast(`먼저 "${STEP_LABEL[step]}" 단계를 진행해주세요!`);
+            showGuideNotice(`먼저 "${STEP_LABEL[step]}" 단계를 진행해주세요!`);
             return;
         }
-        if (busy) return; // 작업 중이면 중복 실행 방지
+        if (busy) {
+            showGuideNotice("다른 작업이 진행 중입니다. 잠시만 기다려 주세요.", "info");
+            return; // 작업 중이면 중복 실행 방지
+        }
         fn();
     };
 
@@ -489,6 +517,26 @@ export default function ActionButtons() {
     return (
         <>
             <div className="panel">
+                {showGuide && (
+                    <div className={`process-alert ${noticeType}`}>
+                        <div className="process-alert-header">
+                            <div>
+                                <strong className="process-alert-title">현재 단계</strong>
+                                <span className="process-alert-step">{STEP_LABEL[step]}</span>
+                            </div>
+                            <button
+                                className="process-alert-close"
+                                onClick={() => setShowGuide(false)}
+                                title="안내 닫기"
+                            >
+                                ×
+                            </button>
+                        </div>
+                        <p className="process-alert-body">{STEP_GUIDE[step]}</p>
+                        {processNotice && <div className={`process-alert-message ${noticeType}`}>{processNotice}</div>}
+                    </div>
+                )}
+
                 {/* 컨트롤 버튼 영역 */}
                 <div className="controls">
                     {/* 처음 올리기 필요 시, '가져오기' 대신 '시작' 버튼 표시 */}
@@ -621,6 +669,35 @@ export default function ActionButtons() {
                     files={state.stagingArea} // '담긴 파일' 상태 (useGit에서 관리)
                     onRemove={(name) => dispatch({ type: "REMOVE_FROM_STAGING", payload: name })} // 파일 제거 액션 (useGit에서 관리)
                 />
+
+                <div className="process-toolbar">
+                    <div className="process-toolbar-buttons">
+                        <button
+                            className="btn btn-ghost"
+                            onClick={() => setShowChangesPanel((prev) => !prev)}
+                            disabled={!repoId}
+                        >
+                            {showChangesPanel ? "변경 사항 닫기" : "변경 사항 미리보기"}
+                        </button>
+                        <button
+                            className="btn btn-ghost"
+                            onClick={() => setShowGuide((prev) => !prev)}
+                        >
+                            {showGuide ? "단계 안내 숨기기" : "단계 안내 보기"}
+                        </button>
+                    </div>
+                    <span className="process-toolbar-hint">커밋이나 PR 전에 변경 내용을 확인해 보세요.</span>
+                </div>
+
+                {showChangesPanel && (
+                    <div className="changes-preview-panel">
+                        <div className="changes-preview-header">
+                            <h4>브랜치에 포함될 변경 사항</h4>
+                            <button className="btn btn-ghost" onClick={() => setShowChangesPanel(false)}>닫기</button>
+                        </div>
+                        <DiffView embedded initialTab="changes" />
+                    </div>
+                )}
             </div>
 
             {/* 모달 컴포넌트들 */}

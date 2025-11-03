@@ -71,6 +71,7 @@ export default function Header() {
                     <button
                         className="user-email-button"
                         onClick={() => setDropdownOpen(!dropdownOpen)}
+                        title="계정 메뉴 열기"
                     >
                         {user.email}
                         <span className="dropdown-arrow">{dropdownOpen ? "▲" : "▼"}</span>
@@ -87,15 +88,21 @@ export default function Header() {
                             >
                                 ⚙️ 계정 설정
                             </button>
-                            <button
-                                className="dropdown-item"
-                                onClick={() => {
-                                    setDropdownOpen(false);
-                                    handleSignout();
-                                }}
-                            >
-                                🚪 로그아웃
-                            </button>
+                            <div className="dropdown-divider" />
+                            <div className="logout-toggle-row">
+                                <span className="logout-label">🚪 로그아웃</span>
+                                <label className="toggle-switch small">
+                                    <input
+                                        type="checkbox"
+                                        onChange={(e) => {
+                                            setDropdownOpen(false);
+                                            e.target.checked = false;
+                                            handleSignout();
+                                        }}
+                                    />
+                                    <span className="slider" />
+                                </label>
+                            </div>
                         </div>
                     )}
                 </div>

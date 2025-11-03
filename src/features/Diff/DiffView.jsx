@@ -1,19 +1,23 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useGit } from "../GitCore/GitContext";
 import WorkingDiffView from "./WorkingDiffView";
 import StagedDiffView from "./StagedDiffView";
 import CompareDiffView from "./CompareDiffView";
 
-export default function DiffView() {
+export default function DiffView({ initialTab = "changes", embedded = false }) {
     const { state } = useGit();
-    const [activeDiff, setActiveDiff] = useState("changes");
+    const [activeDiff, setActiveDiff] = useState(initialTab);
+
+    useEffect(() => {
+        setActiveDiff(initialTab);
+    }, [initialTab]);
 
     if (!state.selectedRepoId) {
         return <div style={{ padding: 20 }}>저장소를 선택하세요.</div>;
     }
 
     return (
-        <div className="diff-page-container" style={{ padding: "0 16px" }}>
+        <div className={`diff-page-container${embedded ? " embedded" : ""}`} style={embedded ? undefined : { padding: "0 16px" }}>
             <div className="sub-tabs" style={{ borderBottom: "1px solid #ddd", marginBottom: 16 }}>
                 <button
                     className={`tab-btn ${activeDiff === "changes" ? "active" : ""}`}

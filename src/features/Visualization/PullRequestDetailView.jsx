@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react'
 import { useGit } from '../GitCore/GitContext'
 import { api } from '../API'
+import { getUserDisplayName } from '../../utils/userDisplay.js'
 
 export default function PullRequestDetailView() {
     const { state, dispatch } = useGit()
@@ -64,11 +65,17 @@ export default function PullRequestDetailView() {
         return reviews.some(review => review.status?.toUpperCase() === 'APPROVED');
     }, [reviews]);
 
-    const isPrOpen = useMemo(() => {
-        const normalizedState = String(details?.state || '').trim().toUpperCase();
-        if(!normalizedState) return true;
-        return normalizedState !== 'CLOSED' && normalizedState !== 'MERGED';
+    const normalizedPrState = useMemo(() => {
+        const stateSource = details?.state ?? details?.status ?? '';
+        return String(stateSource || '').trim().toUpperCase();
     }, [details]);
+
+    const isPrOpen = useMemo(() => {
+        if (!normalizedPrState) return true;
+        return normalizedPrState === 'OPEN';
+    }, [normalizedPrState]);
+
+    const isPrMerged = useMemo(() => normalizedPrState === 'MERGED', [normalizedPrState]);
 
     const handleSubmitReview = async (status) => {
         const comment = newReviewText.trim();
@@ -95,6 +102,10 @@ export default function PullRequestDetailView() {
     const handleMerge = async () => {
         if (!isApproved) {
             alert('병합하려면 최소 1개 이상의 "승인(Approve)" 리뷰가 필요합니다.');
+            return;
+        }
+        if (isPrMerged) {
+            alert('이미 병합된 PR입니다.');
             return;
         }
         if (!window.confirm(`PR #${details.id}를 병합하시겠습니까?`)) return
@@ -181,19 +192,19 @@ export default function PullRequestDetailView() {
                                 <button
                                     className={`btn ${isApproved ? 'btn-success' : 'btn-locked'}`}
                                     onClick={handleMerge}
-                                    disabled={isSubmitting || !isApproved}
-                                    title={!isApproved ? '병합하려면 "승인" 리뷰가 필요합니다.' : ''}
+                                    disabled={isSubmitting || !isApproved || isPrMerged}
+                                    title={!isApproved ? '병합하려면 "승인" 리뷰가 필요합니다.' : (isPrMerged ? '이미 병합이 완료된 PR입니다.' : '')}
                                 >
                                     {isSubmitting ? '병합 중...' : '병합하기'}
                                 </button>
                             </div>
                         ) : (
-                            <span className="pr-state-chip" style={{textTransform: 'uppercase'}}>{details.state}</span>
+                            <span className="pr-state-chip" style={{textTransform: 'uppercase'}}>{details.status || details.state}</span>
                         )}
                     </div>
                     <p className="panel-sub">{details.description || "설명이 없습니다."}</p>
                     <div className="pr-meta">
-                        {details.author?.username || 'user'}가
+                        {getUserDisplayName(details.author)}가
                         <span className="branch-chip">{details.sourceBranch}</span>
                         →
                         <span className="branch-chip">{details.targetBranch}</span>
@@ -247,7 +258,7 @@ export default function PullRequestDetailView() {
                         {reviews.length === 0 && <div className="empty">아직 리뷰가 없습니다.</div>}
                         {reviews.map(review => (
                             <div key={review.id} className="review-item">
-                                <strong className="review-author">{review.author?.username || 'user'}</strong>
+                                <strong className="review-author">{getUserDisplayName(review.author)}</strong>
                                 <p className="review-comment">{review.comment}</p>
                                 <span className={`review-status ${review.status?.toLowerCase()}`}>
                                     {review.status}
