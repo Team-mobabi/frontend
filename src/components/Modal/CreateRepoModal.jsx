@@ -36,7 +36,7 @@ export default function CreateRepoModal({ open, onClose, onRepoCreated }) {
             });
 
             const repoId = newRepo.repoId || newRepo.id;
-            await api.repos.connectRemoteLocal(repoId, { name: "origin" });
+            await api.repos.addLocalRemote(repoId, { name: "origin" });
 
             onRepoCreated(newRepo);
             setName("");

@@ -8,7 +8,7 @@ import CollaboratorModal from '../../components/Modal/CollaboratorModal';
 
 export default function Header() {
     const nav = useNavigate();
-    const { user, signout } = useAuth();
+    const { user, logout } = useAuth();
     const [modalOpen, setModalOpen] = useState(false);
     const { state } = useGit();
     const repoId = state.selectedRepoId;
@@ -17,7 +17,7 @@ export default function Header() {
     const dropdownRef = useRef(null);
 
     const handleSignout = () => {
-        signout();
+        logout();
     };
 
     useEffect(() => {
@@ -89,20 +89,15 @@ export default function Header() {
                                 ⚙️ 계정 설정
                             </button>
                             <div className="dropdown-divider" />
-                            <div className="logout-toggle-row">
-                                <span className="logout-label">🚪 로그아웃</span>
-                                <label className="toggle-switch small">
-                                    <input
-                                        type="checkbox"
-                                        onChange={(e) => {
-                                            setDropdownOpen(false);
-                                            e.target.checked = false;
-                                            handleSignout();
-                                        }}
-                                    />
-                                    <span className="slider" />
-                                </label>
-                            </div>
+                            <button
+                                className="dropdown-item"
+                                onClick={() => {
+                                    setDropdownOpen(false);
+                                    handleSignout();
+                                }}
+                            >
+                                🚪 로그아웃
+                            </button>
                         </div>
                     )}
                 </div>
