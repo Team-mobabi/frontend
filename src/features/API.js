@@ -5,19 +5,36 @@ const BASE_URL =
 const DEBUG = String(import.meta.env?.VITE_API_DEBUG ?? import.meta.env?.DEV).toLowerCase() === "true";
 
 const tokenKey = "gitgui_token";
+const refreshTokenKey = "gitgui_refreshToken";
+
 export function getToken() {
     try { return localStorage.getItem(tokenKey) || ""; } catch { return ""; }
 }
-export function setToken(t) {
-    try { t ? localStorage.setItem(tokenKey, t) : localStorage.removeItem(tokenKey); } catch {}
+
+export function getRefreshToken() {
+    try { return localStorage.getItem(refreshTokenKey) || ""; } catch { return ""; }
 }
-export function clearToken() { setToken(""); }
+
+export function setToken(accessToken, refreshToken) {
+    try {
+        if (accessToken) localStorage.setItem(tokenKey, accessToken);
+        if (refreshToken) localStorage.setItem(refreshTokenKey, refreshToken);
+    } catch {}
+}
+
+export function clearToken() {
+    try {
+        localStorage.removeItem(tokenKey);
+        localStorage.removeItem(refreshTokenKey);
+    } catch {}
+}
 
 function qs(params) {
     if (!params) return "";
     const q = new URLSearchParams(Object.entries(params).filter(([, v]) => v != null)).toString();
     return q ? `?${q}` : "";
 }
+
 export function isConflictError(err) {
     const msg = (err?.data?.message || err?.message || "").toLowerCase();
     return (
@@ -28,35 +45,129 @@ export function isConflictError(err) {
         /exiting because of an unresolved conflict/.test(msg)
     );
 }
+
+let isRefreshing = false;
+let failedQueue = [];
+
+const processQueue = (error, token = null) => {
+    failedQueue.forEach(prom => {
+        if (error) {
+            prom.reject(error);
+        } else {
+            prom.resolve(token);
+        }
+    });
+    failedQueue = [];
+};
+
 async function request(method, path, body, options = {}) {
     const authToken = getToken();
-    if (DEBUG) console.info("[API →]", method, (BASE_URL || "") + path, { hasToken: !!authToken, body });
-    const headers = { ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}), ...(options.headers || {}) };
-    const isForm = typeof FormData !== "undefined" && body instanceof FormData;
-    if (body != null && !isForm && headers["Content-Type"] == null) headers["Content-Type"] = "application/json";
-    const res = await fetch((BASE_URL || "") + path, { method, headers, body: body != null ? (isForm ? body : JSON.stringify(body)) : undefined, ...options });
-    let data = null;
-    try { data = await res.json(); } catch {}
-    if (DEBUG) console.info(res.ok ? "[API ← OK]" : "[API ← ERR]", res.status, data);
-    if (!res.ok || (data && data.success === false)) {
-        if (res.status === 401) clearToken();
+    if (DEBUG) console.info("[API →]", method, (BASE_URL || "") + path, { hasToken: !!authToken });
+
+    const headers = { ...options.headers };
+    if (authToken) {
+        headers["Authorization"] = `Bearer ${authToken}`;
+    }
+
+    if (body) {
+        if (body instanceof FormData) {
+        } else if (body instanceof URLSearchParams) {
+            headers["Content-Type"] = "application/x-www-form-urlencoded";
+        } else {
+            headers["Content-Type"] = "application/json";
+            body = JSON.stringify(body);
+        }
+    } else if (method === "POST" || method === "PUT" || method === "PATCH") {
+        headers["Content-Type"] = "application/json";
+    }
+
+    try {
+        const res = await fetch((BASE_URL || "") + path, {
+            method,
+            headers,
+            body,
+            signal: options.signal,
+        });
+
+        if (res.ok) {
+            if (options.responseType === "blob") return res.blob();
+            if (options.responseType === "text") return res.text();
+            if (res.status === 204 || res.headers.get("content-length") === "0") return null;
+            return res.json();
+        }
+
+        let data = null;
+        try { data = await res.json(); } catch {}
+
+        if (DEBUG) console.info("[API ← ERR]", res.status, data);
+
+        if (res.status === 401 && !options.isRetry) {
+            if (isRefreshing) {
+                return new Promise((resolve, reject) => {
+                    failedQueue.push({ resolve, reject });
+                }).then(newAccessToken => {
+                    headers["Authorization"] = `Bearer ${newAccessToken}`;
+                    return request(method, path, body, { ...options, headers, isRetry: true });
+                });
+            }
+
+            isRefreshing = true;
+
+            const rToken = getRefreshToken();
+            if (!rToken) {
+                clearToken();
+                window.location.href = '/';
+                return Promise.reject(new Error("No refresh token"));
+            }
+
+            try {
+                const refreshRes = await fetch((BASE_URL || "") + "/auth/refresh", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ refreshToken: rToken })
+                });
+
+                if (!refreshRes.ok) throw new Error("Failed to refresh token");
+
+                const refreshData = await refreshRes.json();
+                const newAccessToken = refreshData.accessToken;
+
+                setToken(newAccessToken);
+                processQueue(null, newAccessToken);
+
+                headers["Authorization"] = `Bearer ${newAccessToken}`;
+                return request(method, path, body, { ...options, headers, isRetry: true });
+
+            } catch (refreshError) {
+                processQueue(refreshError, null);
+                clearToken();
+                window.location.href = '/';
+                return Promise.reject(refreshError);
+            } finally {
+                isRefreshing = false;
+            }
+        }
+
         const msg = (data && (data.message || data.error)) || `HTTP ${res.status} ${res.statusText}`;
-        const err = new Error(msg);
+        const err = new Error(Array.isArray(msg) ? msg[0] : msg);
         err.status = res.status;
         err.data = data;
         throw err;
+    } catch (err) {
+        if (DEBUG) console.error("[API ← CATCH]", err.status, err.data || err.message);
+        throw err;
     }
-    return data;
 }
 
 export const api = {
     auth: {
-        signup: (payload) => request("POST", "/auth/signup", payload),
-        signin: async (payload) => {
+        register: (payload) => request("POST", "/auth/signup", payload),
+        login: async (payload) => {
             const data = await request("POST", "/auth/signin", payload);
-            const token = data?.token || data?.accessToken;
-            if (token) {
-                setToken(token);
+            const accessToken = data?.accessToken;
+            const refreshToken = data?.refreshToken;
+            if (accessToken && refreshToken) {
+                setToken(accessToken, refreshToken);
                 return { ...data, status: "authenticated" };
             }
             if (data?.status === "pending_verification") {
@@ -64,50 +175,34 @@ export const api = {
             }
             throw new Error("로그인 응답이 올바르지 않습니다.");
         },
-        signout: async () => { clearToken(); return true; },
+        logout: async () => {
+            try {
+                await request("POST", "/auth/logout");
+            } catch (e) {
+                console.error("Logout API failed, clearing token regardless.", e);
+            }
+            clearToken();
+            return true;
+        },
+        refresh: (refreshToken) => request("POST", "/auth/refresh", { refreshToken }),
         getToken,
     },
     email: {
         sendVerification: (payload) => request("POST", "/email/send-verification", payload),
         verifyCode: (payload) => request("POST", "/email/verify-code", payload),
     },
-    user: {
+    users: {
         me: () => request("GET", "/users/me"),
         changePassword: (payload) => request("PATCH", "/users/password", payload),
         deleteAccount: () => request("DELETE", "/users/me"),
-    },
-    users: {
         search: (params) => {
             return request("GET", `/users/search${qs(params)}`);
         },
     },
     collaborators: {
-        /**
-         * (POST) 레포지토리에 협업자 추가
-         * @param {string} repoId
-         * @param {object} payload - { email: '...' } 또는 { userId: '...' }
-         */
         add: (repoId, payload) => request("POST", `/repos/${repoId}/collaborators`, payload),
-
-        /**
-         * (GET) 레포지토리의 협업자 목록 조회
-         * @param {string} repoId
-         */
         list: (repoId) => request("GET", `/repos/${repoId}/collaborators`),
-
-        /**
-         * (PATCH) 협업자의 권한 수정
-         * @param {string} repoId
-         * @param {string} userId
-         * @param {object} payload - { role: '...' } (예: 'admin', 'write', 'read')
-         */
         updateRole: (repoId, userId, payload) => request("PATCH", `/repos/${repoId}/collaborators/${userId}`, payload),
-
-        /**
-         * (DELETE) 레포지토리에서 협업자 제거
-         * @param {string} repoId
-         * @param {string} userId
-         */
         remove: (repoId, userId) => request("DELETE", `/repos/${repoId}/collaborators/${userId}`),
     },
     repos: {
@@ -117,10 +212,10 @@ export const api = {
         listPublic: (params) => request("GET", `/repos/public${qs(params)}`),
         listUserPublic: (userId, params) => request("GET", `/repos/public/user/${userId}${qs(params)}`),
         fork: (repoIdToFork) => request("POST", `/repos/fork`, { sourceRepoId: repoIdToFork }),
-        connectRemote: (id, payload) => request("POST", `/repos/${id}/remote`, payload),
-        connectRemoteLocal: (id, payload) => request("POST", `/repos/${id}/remote-local`, payload),
+        addRemote: (id, payload) => request("POST", `/repos/${id}/remote`, payload),
+        addLocalRemote: (id, payload) => request("POST", `/repos/${id}/remote-local`, payload),
         status: (id) => request("GET", `/repos/${id}/status`),
-        add: (id, files) => request("POST", `/repos/${id}/add`, { files }),
+        add: (id, files) => request("POST", `/repos/${id}/add`, { files }), // 배열 -> { files: 배열 }
         commit: (id, message) => request("POST", `/repos/${id}/commit`, { message }),
         reset: (id, payload) => request("POST", `/repos/${id}/reset`, payload),
         pull: (id, body) => request("POST", `/repos/${id}/pull`, body),
@@ -134,29 +229,14 @@ export const api = {
         deleteFile: (id, params) => request("DELETE", `/repos/${id}/files${qs(params)}`),
         upload: async (id, fileList) => {
             const fd = new FormData();
-            console.log('[API] 업로드할 파일 목록:', fileList);
-
-            // 각 파일을 추가하고, 경로 정보를 별도 필드로 전송
             fileList.forEach((f, index) => {
                 const relativePath = f.webkitRelativePath || f.name;
-                console.log('[API] FormData에 추가:', {
-                    name: f.name,
-                    webkitRelativePath: f.webkitRelativePath,
-                    relativePath: relativePath
-                });
-
-                // 파일 추가 (파일명만 사용)
                 fd.append("files", f, f.name);
-
-                // 경로 정보를 별도 필드로 추가
                 fd.append("paths", relativePath);
             });
-
-            const up = await request("POST", `/repos/${id}/files`, fd);
-            console.log('[API] 업로드 응답:', up);
+            const up = await request("POST", `/repos/${id}/files`, fd); // upload -> files
             let saved = (up && (up.uploadedFiles?.map(f=>f.path) || up.saved || up.paths || up.files || [])) || [];
             if (!Array.isArray(saved)) saved = [];
-            console.log('[API] 저장된 파일 경로:', saved);
             return { saved };
         },
         conflicts: (id) => request("GET", `/repos/${id}/conflicts`),

@@ -12,7 +12,7 @@ export function AuthProvider({ children }) {
             try {
                 const t = getToken();
                 if (t) {
-                    const me = await api.users.me(); // 'user' -> 'users' (복수)
+                    const me = await api.users.me(); // users.me 호출
                     setUser(me);
                 } else {
                     setUser(null);
@@ -30,7 +30,7 @@ export function AuthProvider({ children }) {
     }, []);
 
     const refresh = async () => {
-        const me = await api.users.me(); // 'user' -> 'users' (복수)
+        const me = await api.users.me(); // users.me 호출
         setUser(me);
         return me;
     };
@@ -40,10 +40,8 @@ export function AuthProvider({ children }) {
             localStorage.removeItem("selectedRepoId");
         } catch {}
 
-        // 'signin' -> 'login' (API.js 명세 기준)
-        const res = await api.auth.login({ email, password });
+        const res = await api.auth.login({ email, password }); // auth.login 호출
 
-        // RefreshToken 저장 로직 (이전 요청사항 반영)
         const accessToken = res?.accessToken;
         const refreshToken = res?.refreshToken;
 
@@ -55,9 +53,9 @@ export function AuthProvider({ children }) {
         return await refresh();
     };
 
-    const logout = async () => { // 'signout' -> 'logout'
+    const logout = async () => {
         try {
-            await api.auth.logout(); // 'signout' -> 'logout' (API.js 명세 기준)
+            await api.auth.logout(); // auth.logout 호출
         } catch (err) {
             console.error("Logout API failed:", err);
         }
