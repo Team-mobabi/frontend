@@ -61,6 +61,30 @@ export default function HomePage(){
         })();
     }, [user, dispatch, state.selectedRepoId]);
 
+    useEffect(() => {
+        const repoId = state.selectedRepoId;
+        if (!repoId) {
+            return;
+        }
+
+        let cancelled = false;
+
+        api.pullRequests.list(repoId)
+            .then(data => {
+                if (cancelled) return;
+                const next = data?.pullRequests || data || [];
+                dispatch({ type: 'SET_PRS', payload: Array.isArray(next) ? next : [] });
+            })
+            .catch(err => {
+                if (cancelled) return;
+                console.error('[HomePage] Failed to refresh PR list:', err);
+            });
+
+        return () => {
+            cancelled = true;
+        };
+    }, [dispatch, state.selectedRepoId, state.graphVersion]);
+
 
     const renderCurrentView = () => {
         switch (state.currentView) {
@@ -119,13 +143,6 @@ export default function HomePage(){
                                 onClick={() => dispatch({ type: "SET_VIEW", payload: "files" })}
                             >
                                 파일
-                            </button>
-
-                            <button
-                                className={`tab-btn ${state.currentView === "diff" ? "active" : ""}`}
-                                onClick={() => dispatch({ type: "SET_VIEW", payload: "diff" })}
-                            >
-                                변경 사항
                             </button>
 
                             <button
