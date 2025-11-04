@@ -151,14 +151,16 @@ export default function ActionButtons() {
                 setNeedsInitialPush(Boolean(st.isEmpty)); // 프로젝트가 비어있으면 처음 올리기 필요
 
                 const stagedFiles = Array.isArray(st?.files) ? st.files : []; // '올릴 예정'인 파일 목록
-                const localCommitsToPush = findMissingCommits(graph, currentBranch, "push"); // 서버에 없는 '저장된 기록'
+                const localCommitsToPush = findMissingCommits(graph, currentBranch, "push") || []; // 서버에 없는 '저장된 기록'
 
                 // 현재 브랜치가 remote에 없는지 확인 (새로 만든 브랜치인지)
                 const remoteBranches = graph?.remote?.branches || {};
                 const isNewLocalBranch = !remoteBranches[currentBranch];
 
                 // Push 가능 여부 판단 (diverged 상태여도 Force Push 가능)
-                const canPush = localCommitsToPush.length > 0 || localCommitsToPush._diverged || isNewLocalBranch;
+                const commitsReadyToPush = Array.isArray(localCommitsToPush) ? localCommitsToPush.length > 0 : false;
+                const divergedFromRemote = Boolean(localCommitsToPush._diverged);
+                const canPush = commitsReadyToPush || divergedFromRemote;
                 setHasPushableCommits(canPush);
 
                 if (stagedFiles.length > 0) {
