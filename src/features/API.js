@@ -101,7 +101,11 @@ async function request(method, path, body, options = {}) {
 
         if (DEBUG) console.info("[API ← ERR]", res.status, data);
 
-        if (res.status === 401 && !options.isRetry) {
+        const isAuthEndpoint = path.startsWith("/auth/signin") ||
+                               path.startsWith("/auth/signup") ||
+                               path.startsWith("/auth/refresh");
+
+        if (res.status === 401 && !options.isRetry && !isAuthEndpoint) {
             if (isRefreshing) {
                 return new Promise((resolve, reject) => {
                     failedQueue.push({ resolve, reject });
@@ -162,6 +166,7 @@ async function request(method, path, body, options = {}) {
 export const api = {
     auth: {
         register: (payload) => request("POST", "/auth/signup", payload),
+        signup: (payload) => request("POST", "/auth/signup", payload), // register의 alias
         login: async (payload) => {
             const data = await request("POST", "/auth/signin", payload);
             const accessToken = data?.accessToken;

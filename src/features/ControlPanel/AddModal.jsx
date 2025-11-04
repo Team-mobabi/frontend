@@ -4,6 +4,65 @@ import Toast from "../../components/Toast/Toast.jsx";
 
 // [삭제] Helper Functions (candidatesFromStatus 등) 모두 제거
 
+// --- Helper Functions ---
+/**
+ * .gitignore 패턴에 해당하는 파일인지 확인
+ * @param {File} file - 확인할 파일 객체
+ * @returns {boolean} - 무시해야 하는 파일이면 true
+ */
+function shouldIgnoreFile(file) {
+    const path = file.webkitRelativePath || file.name;
+    const pathLower = path.toLowerCase();
+
+    // 일반적인 .gitignore 패턴들
+    const ignorePatterns = [
+        /node_modules\//i,
+        /\.git\//i,
+        /\.idea\//i,
+        /\.vscode\//i,
+        /dist\//i,
+        /build\//i,
+        /coverage\//i,
+        /\.next\//i,
+        /\.nuxt\//i,
+        /\.cache\//i,
+        /\.temp\//i,
+        /\.tmp\//i,
+        /\.log$/i,
+        /\.env$/i,
+        /\.env\./i,
+        /\.DS_Store$/i,
+        /__pycache__\//i,
+        /\.pytest_cache\//i,
+        /\.mypy_cache\//i,
+        /vendor\//i,
+        /target\//i,
+    ];
+
+    return ignorePatterns.some(pattern => pattern.test(path));
+}
+
+/**
+ * 파일 배열에서 .gitignore 패턴에 해당하는 파일들을 필터링
+ * @param {File[]} files - 필터링할 파일 배열
+ * @returns {{filtered: File[], ignored: number}} - 필터링된 파일과 무시된 파일 수
+ */
+function filterIgnoredFiles(files) {
+    const filtered = [];
+    let ignoredCount = 0;
+
+    files.forEach(file => {
+        if (shouldIgnoreFile(file)) {
+            ignoredCount++;
+            console.log('[AddModal] 무시된 파일:', file.webkitRelativePath || file.name);
+        } else {
+            filtered.push(file);
+        }
+    });
+
+    return { filtered, ignored: ignoredCount };
+}
+
 // --- Component ---
 export default function AddModal({open, onCancel, onConfirm}) {
     // [삭제] status 관련 state 모두 제거 (tab, loading, files, selected, q 등)
@@ -42,11 +101,29 @@ export default function AddModal({open, onCancel, onConfirm}) {
             });
         });
 
-        let chosen = list;
+        // .gitignore 패턴 필터링
+        const { filtered, ignored } = filterIgnoredFiles(list);
+        console.log(`[AddModal] 필터링 결과: ${filtered.length}개 파일 선택, ${ignored}개 파일 무시됨`);
+
+        let chosen = filtered;
+        let messages = [];
+
+        // 무시된 파일이 있으면 알림
+        if (ignored > 0) {
+            messages.push(`${ignored}개의 파일이 자동으로 제외되었습니다. (node_modules, .git, .idea 등)`);
+        }
+
+        // 100개 제한
         if (chosen.length > 100) {
             chosen = chosen.slice(0, 100);
-            setToast("최대 100개 파일까지만 담을 수 있어요. 처음 100개만 선택됩니다.");
+            messages.push("최대 100개 파일까지만 담을 수 있어요. 처음 100개만 선택됩니다.");
         }
+
+        // 메시지 표시
+        if (messages.length > 0) {
+            setToast(messages.join('\n'));
+        }
+
         setPickedFiles(chosen);
 
         if (e.target.webkitdirectory) {
@@ -78,11 +155,30 @@ export default function AddModal({open, onCancel, onConfirm}) {
             setPickedFiles([]);
         } else {
             setErr("");
-            let chosen = list;
+
+            // .gitignore 패턴 필터링
+            const { filtered, ignored } = filterIgnoredFiles(list);
+            console.log(`[AddModal] 필터링 결과 (드롭): ${filtered.length}개 파일 선택, ${ignored}개 파일 무시됨`);
+
+            let chosen = filtered;
+            let messages = [];
+
+            // 무시된 파일이 있으면 알림
+            if (ignored > 0) {
+                messages.push(`${ignored}개의 파일이 자동으로 제외되었습니다. (node_modules, .git, .idea 등)`);
+            }
+
+            // 100개 제한
             if (chosen.length > 100) {
                 chosen = chosen.slice(0, 100);
-                setToast("최대 100개 파일까지만 담을 수 있어요. 처음 100개만 선택됩니다.");
+                messages.push("최대 100개 파일까지만 담을 수 있어요. 처음 100개만 선택됩니다.");
             }
+
+            // 메시지 표시
+            if (messages.length > 0) {
+                setToast(messages.join('\n'));
+            }
+
             setPickedFiles(chosen);
         }
     }

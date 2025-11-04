@@ -10,6 +10,7 @@ const initial = {
     workingDirectory: [],
     stagingArea: [],
     graphVersion: 0,
+    gitStatusCounter: 0, // git status 변경 감지용 카운터
     animationMode: "idle",
     animationTick: 0,
     transferSnapshot: null,

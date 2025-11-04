@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useGit } from "../../features/GitCore/GitContext.jsx";
-import { repoIdOf } from "../../features/GitCore/repoUtils.js";
+import { repoIdOf } from "../../features/GitCore/gitUtils.js";
 import CreateRepoModal from "../Modal/CreateRepoModal.jsx";
 import { api } from "../../features/API.js";
 
