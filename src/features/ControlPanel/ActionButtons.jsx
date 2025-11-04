@@ -168,12 +168,11 @@ export default function ActionButtons() {
                     const stagedFileNames = stagedFiles.map(f => f.path || f.file || f.name || String(f));
                     dispatch({ type: "ADD_SELECTED", payload: stagedFileNames }); // UI에 반영
                 } else if (localCommitsToPush.length > 0 && !isNewLocalBranch) {
-                    // 서버에 브랜치가 있고, 올릴 커밋이 있으면 -> 올리기 단계
                     setStep(4);
                 } else if (st.isEmpty) {
-                    setStep(2); // 프로젝트가 비어있으면 -> 파일 담기 단계부터
+                    setStep(4);
                 } else {
-                    setStep(1); // 그 외 (새 브랜치 포함) -> 서버에서 가져오기 단계부터
+                    setStep(1);
                 }
             })
             .catch((err) => {
@@ -513,7 +512,7 @@ export default function ActionButtons() {
     const lock1 = step !== 1 || busy;
     const lock2 = (needsInitialPush && step === 1) ? true : (step !== 2 || busy);
     const lock3 = step !== 3 || busy;
-    const lock4 = !hasPushableCommits || step === 3 || busy;
+    const lock4 = step !== 4 || busy || (!hasPushableCommits && !needsInitialPush);
 
     // --- Render ---
     return (

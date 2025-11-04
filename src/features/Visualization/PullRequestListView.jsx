@@ -71,9 +71,7 @@ export default function PullRequestListView() {
                                 <div className="pr-info">
                                     <h4 className="pr-title"># {pr.title}</h4>
                                     <div className="pr-meta">
-                                        <span className={`pr-state-chip ${statusLabel?.toLowerCase()}`}>
-                                            {statusLabel}
-                                        </span>
+
 
                                         {authorName}가
                                         <span className="branch-chip">{pr.sourceBranch}</span>
