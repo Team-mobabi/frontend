@@ -4,6 +4,7 @@ import UserSearchModal from "../Modal/UserSearchModal.jsx";
 import logoImage from '../../assets/styles/logo.png';
 import { useAuth } from "../../features/auth/AuthContext.jsx";
 import { useGit } from '../../features/GitCore/GitContext';
+import { api } from "../../features/API.js";
 import CollaboratorModal from '../../components/Modal/CollaboratorModal';
 
 export default function Header() {
@@ -12,12 +13,36 @@ export default function Header() {
     const [modalOpen, setModalOpen] = useState(false);
     const { state } = useGit();
     const repoId = state.selectedRepoId;
+    const repositories = state.repositories || [];
+    const currentRepo = repositories.find((repo) => String(repo?.id || repo?.repoId || repo?._id) === String(repoId));
     const [collabModalOpen, setCollabModalOpen] = useState(false);
     const [dropdownOpen, setDropdownOpen] = useState(false);
     const dropdownRef = useRef(null);
+    const [downloadingRepo, setDownloadingRepo] = useState(false);
 
     const handleSignout = () => {
         logout();
+    };
+
+    const handleDownloadRepo = async () => {
+        if (!repoId) return;
+        setDownloadingRepo(true);
+        try {
+            const blob = await api.repos.downloadRepo(repoId);
+            const repoName = currentRepo?.name || `repo-${repoId}`;
+            const blobUrl = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.href = blobUrl;
+            link.download = `${repoName}.zip`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            setTimeout(() => URL.revokeObjectURL(blobUrl), 2000);
+        } catch (err) {
+            alert(err?.message || "저장소 다운로드에 실패했습니다.");
+        } finally {
+            setDownloadingRepo(false);
+        }
     };
 
     useEffect(() => {
@@ -52,13 +77,23 @@ export default function Header() {
                 🔍 사용자 검색
             </button>
             {repoId && (
-                <button
-                    className="btn btn-ghost btn-secondary"
-                    onClick={() => setCollabModalOpen(true)}
-                    title="현재 리포지토리 협업자 관리"
-                >
-                    ⚙️ 협업자 관리
-                </button>
+                <>
+                    <button
+                        className="btn btn-ghost"
+                        onClick={handleDownloadRepo}
+                        title="현재 레포지토리 전체 다운로드"
+                        disabled={downloadingRepo}
+                    >
+                        {downloadingRepo ? "⬇️ 다운로드 중..." : "⬇️ 저장소 다운로드"}
+                    </button>
+                    <button
+                        className="btn btn-ghost btn-secondary"
+                        onClick={() => setCollabModalOpen(true)}
+                        title="현재 리포지토리 협업자 관리"
+                    >
+                        ⚙️ 협업자 관리
+                    </button>
+                </>
             )}
             <CollaboratorModal
                 open={collabModalOpen}
