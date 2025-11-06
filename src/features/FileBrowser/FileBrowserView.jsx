@@ -13,6 +13,7 @@ export default function FileBrowserView() {
     const [selectedFile, setSelectedFile] = useState("");
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
+    const [downloadingPath, setDownloadingPath] = useState("");
 
     const [qcOpen, setQcOpen] = useState(false);
     const [qcTargetPath, setQcTargetPath] = useState("");
@@ -52,6 +53,34 @@ export default function FileBrowserView() {
                 .then((data) => setFileContent(data.content || ""))
                 .catch((err) => setError(err.message || "파일 내용을 불러올 수 없습니다."))
                 .finally(() => setLoading(false));
+        }
+    };
+
+    const handleDownload = async (item, event) => {
+        event.stopPropagation();
+        if (!selectedRepoId || !item?.path) return;
+        setDownloadingPath(item.path);
+        setError("");
+        try {
+            const blob = await api.repos.downloadFile(selectedRepoId, { path: item.path });
+            const downloadName = item.type === "folder"
+                ? `${item.name || item.path.split("/").pop() || "folder"}.zip`
+                : (item.name || item.path.split("/").pop() || "file");
+
+            const blobUrl = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = blobUrl;
+            a.download = downloadName;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            setTimeout(() => URL.revokeObjectURL(blobUrl), 2000);
+
+            setToast(`${downloadName} 다운로드를 시작합니다.`);
+        } catch (e) {
+            setError(e.message || "파일을 다운로드할 수 없습니다.");
+        } finally {
+            setDownloadingPath("");
         }
     };
 
@@ -143,28 +172,47 @@ export default function FileBrowserView() {
                             key={item.path}
                             className={`file-item ${item.type} ${selectedFile === item.path ? "active" : ""}`}
                             onClick={() => handleItemClick(item)}
-                            style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}
+                            style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px" }}
                         >
                             <div style={{ display: "flex", alignItems: "center", gap: "8px", flex: 1, overflow: "hidden" }}>
                                 <span className="file-icon">{item.type === "folder" ? "📁" : "📄"}</span>
                                 <span className="file-name">{item.name}</span>
                             </div>
-                            <button
-                                className="btn btn-ghost"
-                                onClick={(e) => handleDelete(item, e)}
-                                style={{
-                                    padding: "4px 8px",
-                                    fontSize: "12px",
-                                    color: "var(--danger)",
-                                    opacity: 0.7,
-                                    transition: "opacity 0.2s"
-                                }}
-                                onMouseEnter={(e) => e.currentTarget.style.opacity = 1}
-                                onMouseLeave={(e) => e.currentTarget.style.opacity = 0.7}
-                                title="삭제"
-                            >
-                                🗑️
-                            </button>
+                            <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+                                <button
+                                    className="btn btn-ghost"
+                                    onClick={(e) => handleDownload(item, e)}
+                                    style={{
+                                        padding: "4px 8px",
+                                        fontSize: "12px",
+                                        color: "var(--primary)",
+                                        opacity: 0.7,
+                                        transition: "opacity 0.2s"
+                                    }}
+                                    onMouseEnter={(e) => (e.currentTarget.style.opacity = 1)}
+                                    onMouseLeave={(e) => (e.currentTarget.style.opacity = 0.7)}
+                                    title="다운로드"
+                                    disabled={downloadingPath === item.path}
+                                >
+                                    {downloadingPath === item.path ? "…" : "⬇️"}
+                                </button>
+                                <button
+                                    className="btn btn-ghost"
+                                    onClick={(e) => handleDelete(item, e)}
+                                    style={{
+                                        padding: "4px 8px",
+                                        fontSize: "12px",
+                                        color: "var(--danger)",
+                                        opacity: 0.7,
+                                        transition: "opacity 0.2s"
+                                    }}
+                                    onMouseEnter={(e) => (e.currentTarget.style.opacity = 1)}
+                                    onMouseLeave={(e) => (e.currentTarget.style.opacity = 0.7)}
+                                    title="삭제"
+                                >
+                                    🗑️
+                                </button>
+                            </div>
                         </div>
                     ))}
                 </div>

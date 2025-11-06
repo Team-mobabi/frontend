@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { useGit } from "../../features/GitCore/GitContext.jsx";
 import { repoIdOf } from "../../features/GitCore/gitUtils.js";
 import CreateRepoModal from "../Modal/CreateRepoModal.jsx";
+import CloneRepoModal from "../Modal/CloneRepoModal.jsx";
 import { api } from "../../features/API.js";
 
 export default function Sidebar() {
@@ -9,6 +10,7 @@ export default function Sidebar() {
     const repos = state.repositories || [];
     const activeId = state.selectedRepoId;
     const [createModalOpen, setCreateModalOpen] = useState(false);
+    const [cloneModalOpen, setCloneModalOpen] = useState(false);
 
     const handleDeleteRepo = async (e, repo) => {
         e.stopPropagation();
@@ -63,11 +65,19 @@ export default function Sidebar() {
             <button className="btn btn-primary" style={{ marginTop: 8 }} onClick={() => setCreateModalOpen(true)}>
                 새 레포 만들기
             </button>
+            <button className="btn" style={{ marginTop: 8 }} onClick={() => setCloneModalOpen(true)}>
+                Git Clone
+            </button>
 
             <CreateRepoModal
                 open={createModalOpen}
                 onClose={() => setCreateModalOpen(false)}
                 onRepoCreated={handleRepoCreated}
+            />
+            <CloneRepoModal
+                open={cloneModalOpen}
+                onClose={() => setCloneModalOpen(false)}
+                onRepoCloned={handleRepoCreated}
             />
         </div>
     );
