@@ -11,11 +11,12 @@ export default function Header() {
     const nav = useNavigate();
     const { user, logout } = useAuth();
     const [modalOpen, setModalOpen] = useState(false);
-    const { state } = useGit();
+    const { state, dispatch } = useGit();
     const repoId = state.selectedRepoId;
     const repositories = state.repositories || [];
     const currentRepo = repositories.find((repo) => String(repo?.id || repo?.repoId || repo?._id) === String(repoId));
-    const [collabModalOpen, setCollabModalOpen] = useState(false);
+    const collabModalState = state.collaboratorModal || {};
+    const collabModalOpen = collabModalState.open;
     const [dropdownOpen, setDropdownOpen] = useState(false);
     const dropdownRef = useRef(null);
     const [downloadingRepo, setDownloadingRepo] = useState(false);
@@ -88,7 +89,10 @@ export default function Header() {
                     </button>
                     <button
                         className="btn btn-ghost btn-secondary"
-                        onClick={() => setCollabModalOpen(true)}
+                        onClick={() => {
+                            if (!repoId) return;
+                            dispatch({ type: "OPEN_COLLABORATOR_MODAL", payload: { repoId } });
+                        }}
                         title="현재 리포지토리 협업자 관리"
                     >
                         ⚙️ 협업자 관리
@@ -97,7 +101,7 @@ export default function Header() {
             )}
             <CollaboratorModal
                 open={collabModalOpen}
-                onClose={() => setCollabModalOpen(false)}
+                onClose={() => dispatch({ type: "CLOSE_COLLABORATOR_MODAL" })}
             />
 
             {/* 사용자 드롭다운 메뉴 */}

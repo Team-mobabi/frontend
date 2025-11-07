@@ -19,6 +19,7 @@ const initial = {
     currentView: "graph",
     prList: [],
     selectedPrId: null, // [신규] 현재 보고있는 PR ID
+    collaboratorModal: { open: false, repoId: null },
 };
 
 function reducer(state, action) {
@@ -30,7 +31,16 @@ function reducer(state, action) {
         case "SELECT_REPO":
             if (action.payload) try { localStorage.setItem(LS_KEY, String(action.payload)); } catch {}
             // 레포 변경 시 PR 관련 상태 초기화
-            return { ...state, selectedRepoId: action.payload, stagingArea: [], workingDirectory: [], currentView: "graph", prList: [], selectedPrId: null };
+            return {
+                ...state,
+                selectedRepoId: action.payload,
+                stagingArea: [],
+                workingDirectory: [],
+                currentView: "graph",
+                prList: [],
+                selectedPrId: null,
+                collaboratorModal: { open: false, repoId: null },
+            };
         case "ADD_SELECTED":
             return { ...state, stagingArea: Array.from(new Set([...(state.stagingArea||[]), ...action.payload])) };
         case "REMOVE_FROM_STAGING":
@@ -71,6 +81,21 @@ function reducer(state, action) {
         // [신규] PR 상세 뷰로 이동
         case "SELECT_PR":
             return { ...state, currentView: 'pr_detail', selectedPrId: action.payload };
+
+        case "OPEN_COLLABORATOR_MODAL":
+            return {
+                ...state,
+                collaboratorModal: {
+                    open: true,
+                    repoId: action.payload?.repoId || state.selectedRepoId || null,
+                },
+            };
+
+        case "CLOSE_COLLABORATOR_MODAL":
+            return {
+                ...state,
+                collaboratorModal: { open: false, repoId: null },
+            };
 
         default:
             return state;

@@ -863,7 +863,6 @@ export default function RepositoryView() {
                 open={isCloneModalOpen}
                 onClose={() => setCloneModalOpen(false)}
                 onRepoCloned={(clonedRepo) => {
-                    setCloneModalOpen(false);
                     console.log("새 저장소 생성됨:", clonedRepo);
                     // 새 저장소를 사이드바에 추가하고 선택합니다.
                     dispatch({ type: "ADD_REPO", payload: clonedRepo });
@@ -871,6 +870,9 @@ export default function RepositoryView() {
                 }}
                 sourceRepoId={repoId}      // <-- [중요] 현재 repoId를 넘겨줌
                 sourceRepoName={repoName}  // <-- [중요] 현재 repoName을 넘겨줌
+                onManageCollaborators={(targetRepoId) => {
+                    dispatch({ type: "OPEN_COLLABORATOR_MODAL", payload: { repoId: targetRepoId } });
+                }}
             />
 
             <div className="view-options">
