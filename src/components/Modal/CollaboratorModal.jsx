@@ -5,7 +5,10 @@ import { useGit } from '../../features/GitCore/GitContext';
 // 모달 컴포넌트
 export default function CollaboratorModal({ open, onClose }) {
     const { state } = useGit();
-    const repoId = state.selectedRepoId;
+    const repoId = state.collaboratorModal?.repoId || state.selectedRepoId;
+    const repositories = state.repositories || [];
+    const repoInfo = repositories.find((repo) => String(repo?.id || repo?.repoId || repo?._id) === String(repoId));
+    const repoName = repoInfo?.name || (repoId ? `ID ${repoId}` : "선택된 저장소 없음");
 
     const [collaborators, setCollaborators] = useState([]);
     const [loading, setLoading] = useState(false);
@@ -29,6 +32,7 @@ export default function CollaboratorModal({ open, onClose }) {
 
     // 협업자 목록 (GET)
     const fetchCollaborators = async () => {
+        if (!repoId) return;
         setLoading(true);
         setError('');
         try {
@@ -43,6 +47,11 @@ export default function CollaboratorModal({ open, onClose }) {
 
     // [수정됨] 협업자 추가 (POST)
     const handleAdd = async () => {
+        if (!repoId) {
+            setError('협업자를 추가할 저장소가 선택되지 않았습니다.');
+            return;
+        }
+
         const emailToSearch = newEmail.trim();
         if (!emailToSearch) {
             setError('추가할 사용자의 이메일을 입력하세요.');
@@ -84,6 +93,11 @@ export default function CollaboratorModal({ open, onClose }) {
 
     // 협업자 제거 (DELETE)
     const handleRemove = async (user) => {
+        if (!repoId) {
+            setError('협업자를 관리할 저장소가 없습니다.');
+            return;
+        }
+
         const userIdToRemove = user.userId || user.id; // API 응답에 따라 userId 또는 id 사용
         if (!window.confirm(`'${user.email}' 님을 협업자에서 제거하시겠습니까?`)) {
             return;
@@ -108,6 +122,19 @@ export default function CollaboratorModal({ open, onClose }) {
                 </div>
 
                 <div className="modal-body">
+                    <div className="panel-sub" style={{ marginTop: 0, marginBottom: 16 }}>
+                        <div style={{ fontWeight: 600 }}>{repoName}</div>
+                        {repoId ? (
+                            <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 4 }}>
+                                저장소 ID: <code style={{ padding: '2px 4px', background: 'rgba(15,23,42,0.08)', borderRadius: 4 }}>{repoId}</code>
+                            </div>
+                        ) : (
+                            <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 4 }}>
+                                협업자를 관리할 저장소가 선택되지 않았습니다.
+                            </div>
+                        )}
+                    </div>
+
                     {/* --- 1. 협업자 추가 섹션 --- */}
                     <h5 style={{ marginTop: 0, marginBottom: 8 }}>새 협업자 추가</h5>
                     <div style={{ display: 'flex', gap: '8px', marginBottom: '24px' }}>
@@ -118,22 +145,22 @@ export default function CollaboratorModal({ open, onClose }) {
                             placeholder="초대할 사용자 이메일"
                             value={newEmail}
                             onChange={(e) => setNewEmail(e.target.value)}
-                            disabled={isAdding}
+                            disabled={isAdding || !repoId}
                         />
                         {/* [수정] 권한 선택 (소문자 value) */}
                         <select
                             className="input"
                             value={newRole}
                             onChange={(e) => setNewRole(e.target.value)}
-                            disabled={isAdding}
+                            disabled={isAdding || !repoId}
                             style={{ flexBasis: '120px' }}
                         >
                             <option value="read">읽기 (Read)</option>
                             <option value="write">쓰기 (Write)</option>
                             <option value="admin">관리자 (Admin)</option>
                         </select>
-                        <button className="btn btn-primary" onClick={handleAdd} disabled={isAdding}>
-                            {isAdding ? <span className="spinner" style={{width: 16, height: 16}}></span> : '추가'}
+                        <button className="btn btn-primary" onClick={handleAdd} disabled={isAdding || !repoId}>
+                            {isAdding ? <span className="spinner" style={{ width: 16, height: 16 }}></span> : '추가'}
                         </button>
                     </div>
 
@@ -161,6 +188,7 @@ export default function CollaboratorModal({ open, onClose }) {
                                     <button
                                         className="btn btn-sm btn-danger-outline"
                                         onClick={() => handleRemove(user)}
+                                        disabled={!repoId}
                                     >
                                         제거
                                     </button>
