@@ -5,31 +5,7 @@ import { repoIdOf } from "../../features/GitCore/gitUtils.js";
 
 const UPLOAD_BATCH_SIZE = 40;
 
-function extractRepoId(input) {
-    const trimmed = (input || "").trim();
-    if (!trimmed) return "";
-
-    const cleaned = trimmed.split("?")[0].split("#")[0];
-
-    try {
-        const parsed = new URL(cleaned);
-        const segments = parsed.pathname.split("/").filter(Boolean);
-        const idx = segments.indexOf("repos");
-        if (idx !== -1 && segments[idx + 1]) {
-            return decodeURIComponent(segments[idx + 1]);
-        }
-        if (segments.length) {
-            return decodeURIComponent(segments[segments.length - 1]).replace(/\.zip$/i, "");
-        }
-    } catch {}
-
-    const match = cleaned.match(/repos\/([^/]+)(?:\/download|\/files)?/i);
-    if (match && match[1]) {
-        return decodeURIComponent(match[1]);
-    }
-
-    return cleaned.replace(/\.zip$/i, "");
-}
+// [삭제] extractRepoId 함수가 더 이상 필요하지 않아 삭제했습니다.
 
 function findCommonFolderPrefix(paths) {
     if (!paths.length) return "";
@@ -56,48 +32,49 @@ function findCommonFolderPrefix(paths) {
     return `${prefix.join("/")}/`;
 }
 
-export default function CloneRepoModal({ open, onClose, onRepoCloned }) {
-    const [source, setSource] = useState("");
+// [수정] props로 sourceRepoId와 sourceRepoName을 받습니다.
+export default function CloneRepoModal({
+                                           open,
+                                           onClose,
+                                           onRepoCloned,
+                                           sourceRepoId,
+                                           sourceRepoName = "" // 원본 저장소 이름 (선택 사항, UI 표시에 사용)
+                                       }) {
+    // [삭제] source state를 삭제했습니다.
+    // const [source, setSource] = useState("");
     const [name, setName] = useState("");
     const [defaultBranch, setDefaultBranch] = useState("main");
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState("");
     const [progress, setProgress] = useState("");
 
+    // [수정] 모달이 열릴 때 상태를 초기화하고, 새 저장소 이름을 제안합니다.
     useEffect(() => {
-        if (!open) {
-            setSource("");
-            setName("");
+        if (open) {
+            setName(sourceRepoName ? `${sourceRepoName}-copy` : ""); // 예: "MyRepo-copy"
             setDefaultBranch("main");
             setError("");
             setBusy(false);
             setProgress("");
         }
-    }, [open]);
+    }, [open, sourceRepoName]); // 의존성 배열에 sourceRepoName 추가
 
     if (!open) return null;
 
-    const resolveName = (value) => {
-        const trimmed = value.trim();
-        if (trimmed) return trimmed;
-
-        const derived = extractRepoId(source);
-        if (derived) {
-            return derived.replace(/\.git$/i, "").replace(/\.zip$/i, "");
-        }
-        return "";
-    };
+    // [삭제] resolveName 함수를 handleClone 내부 로직으로 단순화했습니다.
 
     const handleClone = async () => {
-        const repoIdentifier = extractRepoId(source);
+        // [수정] sourceRepoId를 props에서 직접 사용합니다.
+        const repoIdentifier = sourceRepoId;
         if (!repoIdentifier) {
-            setError("복제할 저장소 ID 또는 다운로드 URL을 입력하세요.");
+            setError("복제할 원본 저장소 ID가 없습니다. (sourceRepoId prop 누락)");
             return;
         }
 
-        const repoName = resolveName(name);
+        // [수정] 이름 유효성 검사를 단순화합니다.
+        const repoName = (name || "").trim();
         if (!repoName) {
-            setError("생성할 레포지토리 이름을 입력하거나 자동 추출될 수 있도록 입력값을 확인해주세요.");
+            setError("새 레포지토리 이름을 입력하세요.");
             return;
         }
 
@@ -114,6 +91,7 @@ export default function CloneRepoModal({ open, onClose, onRepoCloned }) {
             let lastDownloadError = null;
 
             try {
+                // [수정 없음] ID만 있으면 기존 로직이 동작합니다.
                 archiveBlob = await api.repos.downloadRepo(repoIdentifier);
             } catch (downloadErr) {
                 lastDownloadError = downloadErr;
@@ -140,6 +118,7 @@ export default function CloneRepoModal({ open, onClose, onRepoCloned }) {
                 }
             }
 
+            // ... (압축 해제 로직은 동일) ...
             setProgress("압축 해제 준비 중…");
             const zip = await JSZip.loadAsync(archiveBlob);
             const fileEntries = Object.values(zip.files).filter((entry) => !entry.dir && !entry.name.endsWith("/"));
@@ -167,6 +146,7 @@ export default function CloneRepoModal({ open, onClose, onRepoCloned }) {
                     setProgress(`파일 추출 중… ${i + 1}/${fileEntries.length}`);
                 }
             }
+            // ... (파일 생성 로직 끝) ...
 
             setProgress("새 저장소 생성 중…");
             const createPayload = { name: repoName };
@@ -202,7 +182,9 @@ export default function CloneRepoModal({ open, onClose, onRepoCloned }) {
                     await api.repos.add(newRepoId, uploadedPaths);
                     try {
                         setProgress("초기 커밋 작성 중…");
-                        await api.repos.commit(newRepoId, `Clone from ${repoIdentifier}`);
+                        // [수정] 커밋 메시지에 원본 이름을 사용합니다.
+                        const commitMessage = `Clone from ${sourceRepoName || repoIdentifier}`;
+                        await api.repos.commit(newRepoId, commitMessage);
                     } catch (commitErr) {
                         console.warn("[CloneRepoModal] 초기 커밋에 실패했습니다.", commitErr);
                     }
@@ -230,26 +212,28 @@ export default function CloneRepoModal({ open, onClose, onRepoCloned }) {
         <div className="modal-backdrop" onClick={() => !busy && onClose?.()}>
             <div className="modal" onClick={(e) => e.stopPropagation()} style={{ width: 480 }}>
                 <div className="modal-head">
-                    <h4>Git Clone</h4>
+                    {/* [수정] 목적에 맞게 "저장소 복제"로 변경 (선택 사항) */}
+                    <h4>저장소 복제</h4>
                     <button className="modal-close" onClick={() => !busy && onClose?.()}>×</button>
                 </div>
                 <div className="modal-body" style={{ display: "grid", gap: 12 }}>
+
+                    {/* [추가] 원본 저장소를 표시해줍니다. */}
                     <label className="input-label">
-                        복제할 저장소 ID 또는 다운로드 URL
-                        <input
-                            className="input"
-                            placeholder="예: 12345 또는 https://api.example.com/repos/12345/download"
-                            value={source}
-                            onChange={(e) => setSource(e.target.value)}
-                            disabled={busy}
-                        />
+                        원본 저장소
+                        <div className="input" style={{ backgroundColor: "var(--bg-inset)", cursor: "default" }}>
+                            {sourceRepoName || sourceRepoId}
+                        </div>
                     </label>
+
+                    {/* [삭제] "복제할 저장소 ID..." 입력창 삭제 */}
 
                     <label className="input-label">
                         새 레포지토리 이름
                         <input
                             className="input"
-                            placeholder="자동 추출 또는 직접 입력"
+                            // [수정] placeholder 변경
+                            placeholder="새 저장소의 이름을 입력하세요."
                             value={name}
                             onChange={(e) => setName(e.target.value)}
                             disabled={busy}
@@ -267,10 +251,10 @@ export default function CloneRepoModal({ open, onClose, onRepoCloned }) {
                         />
                     </label>
 
+                    {/* [수정] 도움말 텍스트 변경 */}
                     <div className="panel-sub" style={{ lineHeight: 1.5 }}>
-                        서버에서 `/repos/{repoId}/download` API로 ZIP 아카이브를 내려받아 압축을 풀고,
-                        동일한 구조로 새 저장소를 생성합니다. 필요에 따라 `/repos/{repoId}/files/download`
-                        엔드포인트가 폴더 단위 다운로드에 사용됩니다.
+                        <strong>{sourceRepoName || sourceRepoId}</strong> 저장소의 파일을 복사하여
+                        독립적인 새 저장소를 생성합니다. 원본과의 연결(Fork) 관계는 생성되지 않습니다.
                     </div>
 
                     {progress && (

@@ -9,7 +9,8 @@ import MergeBranchModal from "../../components/Modal/MergeBranchModal.jsx";
 import ConflictModal from "../../components/Modal/ConflictModal.jsx";
 import ResetConfirmModal from "../../components/Modal/ResetConfirmModal.jsx";
 import BeginnerHelp from "../../pages/BeginnerHelp.jsx";
-
+import CloneRepoModal from "../../components/Modal/CloneRepoModal.jsx"; // [추가]
+import { repoIdOf } from "../GitCore/gitUtils.js"; // [추가] repoIdOf 임포트
 
 const Y = 85;
 const X = 180;
@@ -382,6 +383,14 @@ function calcBranchLabels(positions, branchHeads) {
 export default function RepositoryView() {
     const { state, dispatch } = useGit();
     const repoId = state?.selectedRepoId;
+
+    // [추가] 현재 레포지토리 이름 찾기
+    const currentRepo = (state.repositories || []).find(r => {
+        const rid = repoIdOf(r); // gitUtils.js에서 가져온 함수 사용
+        return String(rid) === String(repoId);
+    });
+    const repoName = currentRepo?.name;
+
     const [graph, setGraph] = useState({ local: null, remote: null });
     const [tip, setTip] = useState({ show: false, x: 0, y: 0, lines: [] });
     const [mergeModalState, setMergeModalState] = useState({ open: false, sourceBranch: null });
@@ -389,8 +398,7 @@ export default function RepositoryView() {
     const [simplified, setSimplified] = useState(false);
     const [showStaging, setShowStaging] = useState(false);
     const [helpOpen, setHelpOpen] = useState(false);
-
-    // 🆕 최근 액션(병합) 하이라이트 상태
+    const [isCloneModalOpen, setCloneModalOpen] = useState(false); // [추가]
     const [lastAction, setLastAction] = useState(null);
 
     useEffect(() => {
@@ -646,6 +654,15 @@ export default function RepositoryView() {
         <div className="visualization-area">
             <AnimationEngine />
             <div className="view-options">
+                {/* [추가] "저장소 복제" 버튼 */}
+                <button
+                    className="btn btn-ghost"
+                    style={{padding:"6px 10px", marginRight: "12px"}}
+                    onClick={() => setCloneModalOpen(true)}
+                >
+                    저장소 복제
+                </button>
+
                 <label className="toggle-switch">
                     <input type="checkbox" checked={simplified} onChange={() => setSimplified((s) => !s)} />
                     <span className="slider"></span>
@@ -840,6 +857,21 @@ export default function RepositoryView() {
             />
 
             <ConflictModal />
+
+            {/* [추가] CloneRepoModal 컴포넌트 호출 */}
+            <CloneRepoModal
+                open={isCloneModalOpen}
+                onClose={() => setCloneModalOpen(false)}
+                onRepoCloned={(clonedRepo) => {
+                    setCloneModalOpen(false);
+                    console.log("새 저장소 생성됨:", clonedRepo);
+                    // 새 저장소를 사이드바에 추가하고 선택합니다.
+                    dispatch({ type: "ADD_REPO", payload: clonedRepo });
+                    dispatch({ type: "SELECT_REPO", payload: repoIdOf(clonedRepo) });
+                }}
+                sourceRepoId={repoId}      // <-- [중요] 현재 repoId를 넘겨줌
+                sourceRepoName={repoName}  // <-- [중요] 현재 repoName을 넘겨줌
+            />
 
             <div className="view-options">
                 <label className="toggle-switch">
