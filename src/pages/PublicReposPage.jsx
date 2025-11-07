@@ -112,6 +112,15 @@ export default function PublicReposPage() {
                                         </span>
                                     </div>
                                     <div className="repo-actions">
+                                        {repoDisplayId && (
+                                            <Link
+                                                className="btn btn-ghost"
+                                                to={`/public-repos/${repoDisplayId}`}
+                                                state={{ repo }}
+                                            >
+                                                자세히 보기
+                                            </Link>
+                                        )}
                                         <button
                                             className="btn btn-primary"
                                             onClick={() => handleFork(repo)}

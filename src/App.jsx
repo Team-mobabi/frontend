@@ -7,6 +7,7 @@ import LoginPage from "./pages/LoginPage"; // 경로 확인
 import SplashPage from "./pages/Splash/SplashPage"; // 경로 확인
 import SignupPage from "./pages/SignupPage"; // 경로 확인
 import PublicReposPage from "./pages/PublicReposPage";
+import PublicRepoDetailPage from "./pages/PublicRepoDetailPage";
 import SettingsPage from "./pages/SettingsPage";
 import "./assets/styles/App.css"; // 경로 확인
 
@@ -31,6 +32,7 @@ function Gate() {
             <Routes>
                 <Route path="/app" element={<HomePage />} />
                 <Route path="/public-repos" element={<PublicReposPage />} />
+                <Route path="/public-repos/:repoId" element={<PublicRepoDetailPage />} />
                 <Route path="/users/:userId/public-repos" element={<PublicReposPage />} />
                 <Route path="/settings" element={<SettingsPage />} />
 
