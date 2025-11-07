@@ -447,22 +447,23 @@ export default function PublicRepoDetailPage() {
 
                 {!loading && !error && (
                     <>
-                        <div className="panel repo-summary">
-                            <h2>{repoDisplayName}</h2>
-                            <div className="repo-meta">
-                                {ownerName && <span>소유자: {ownerName}</span>}
-                                {defaultBranch && <span>기본 브랜치: {defaultBranch}</span>}
-                                {updatedAt && <span>최근 업데이트: {formatDate(updatedAt)}</span>}
-                            </div>
-                            <div className="repo-summary-actions">
-                                <button
-                                    className="btn btn-primary"
-                                    onClick={handleDownload}
-                                    disabled={loading || downloading}
-                                >
-                                    {downloading ? "⬇️ 다운로드 준비 중..." : "⬇️ 저장소 다운로드"}
-                                </button>
-                            </div>
+                          <div className="panel repo-summary">
+                              <h2>{repoDisplayName}</h2>
+                              <div className="repo-meta">
+                                  {ownerName && <span>소유자: {ownerName}</span>}
+                                  {defaultBranch && <span>기본 브랜치: {defaultBranch}</span>}
+                                  {updatedAt && <span>최근 업데이트: {formatDate(updatedAt)}</span>}
+                              </div>
+                              <div className="repo-summary-actions">
+                                  <button
+                                      className="btn btn-primary"
+                                      onClick={handleDownload}
+                                      disabled={loading || downloading}
+                                  >
+                                      {downloading ? "⬇️ 다운로드 준비 중..." : "⬇️ 저장소 다운로드"}
+                                  </button>
+                                  <div className="download-note">저장소 다운로드 시 .git 폴더는 포함되지 않습니다.</div>
+                              </div>
                             {downloadError && (
                                 <div className="repo-summary-error">
                                     {downloadError}
