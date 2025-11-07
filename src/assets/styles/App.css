@@ -1350,6 +1350,7 @@ body {
     display: flex;
     align-items: center;
     justify-content: space-between;
+    margin-bottom: 8px;
 }
 
 .detail-layout {
@@ -1382,6 +1383,20 @@ body {
     padding: 12px;
     border-radius: 10px;
     line-height: 1.6;
+}
+
+.repo-summary-actions {
+    margin-top: 12px;
+}
+
+.repo-summary-actions .btn {
+    min-width: 180px;
+}
+
+.repo-summary-error {
+    margin-top: 8px;
+    color: var(--danger);
+    font-size: 13px;
 }
 
 .public-repo-browser {
@@ -2997,6 +3012,88 @@ input:checked + .slider:before {
 .help-button:hover {
     background-color: #3a47c4; /* 호버 시 살짝 어둡게 */
     transform: scale(1.1); /* 호버 시 살짝 크게 */
+}
+
+.ai-button {
+    position: fixed;
+    bottom: 84px;
+    right: 20px;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background-color: var(--warn);
+    color: #1f2937;
+    border: none;
+    font-size: 22px;
+    font-weight: bold;
+    line-height: 48px;
+    text-align: center;
+    cursor: pointer;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+    transition: transform 0.2s ease, background-color 0.2s ease;
+    z-index: 101;
+}
+
+.ai-button:hover {
+    background-color: #d97706;
+    transform: scale(1.1);
+}
+
+.ai-chat-messages {
+    max-height: 420px;
+    overflow-y: auto;
+    padding-right: 4px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.ai-chat-message {
+    display: inline-flex;
+    padding: 10px 12px;
+    border-radius: 12px;
+    max-width: 100%;
+    line-height: 1.5;
+    font-size: 13px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+}
+
+.ai-chat-message.from-user {
+    align-self: flex-end;
+    background: var(--accent);
+    color: white;
+    border-top-right-radius: 4px;
+}
+
+.ai-chat-message.from-assistant {
+    align-self: flex-start;
+    background: var(--panel-2);
+    color: var(--text);
+    border-top-left-radius: 4px;
+}
+
+.ai-chat-input-area {
+    display: grid;
+    gap: 8px;
+    margin-top: 16px;
+}
+
+.ai-chat-input-area textarea {
+    width: 100%;
+    min-height: 72px;
+    resize: vertical;
+    font-family: inherit;
+    font-size: 13px;
+    padding: 10px;
+    border-radius: 8px;
+    border: 1px solid var(--line);
+    background: var(--panel-2);
+}
+
+.ai-chat-input-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
 }
 
 /* --- PR 리뷰 폼 스타일 --- */

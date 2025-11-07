@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import Header from "../components/Header/Header";
 import { api } from "../features/API";
+import { stripGitFromArchive } from "../utils/archiveUtils.js";
 
 function formatDate(value) {
     if (!value) return "";
@@ -303,6 +304,8 @@ export default function PublicRepoDetailPage() {
     const [repoInfo, setRepoInfo] = useState(locationRepo || null);
     const [loading, setLoading] = useState(!locationRepo);
     const [error, setError] = useState("");
+    const [downloading, setDownloading] = useState(false);
+    const [downloadError, setDownloadError] = useState("");
 
     useEffect(() => {
         if (!repoId) {
@@ -392,6 +395,34 @@ export default function PublicRepoDetailPage() {
         }
     }, [navigate]);
 
+    const handleDownload = useCallback(async () => {
+        if (!repoId) return;
+        setDownloadError("");
+        setDownloading(true);
+        try {
+            const archive = await api.repos.downloadRepo(repoId);
+            let sanitizedArchive = archive;
+            try {
+                sanitizedArchive = await stripGitFromArchive(archive);
+            } catch (stripError) {
+                console.warn("[PublicRepoDetailPage] Failed to strip .git directory; downloading original archive.", stripError);
+            }
+            const repoName = repoDisplayName || `repo-${repoId}`;
+            const blobUrl = URL.createObjectURL(sanitizedArchive);
+            const link = document.createElement("a");
+            link.href = blobUrl;
+            link.download = `${repoName}.zip`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            setTimeout(() => URL.revokeObjectURL(blobUrl), 2000);
+        } catch (downloadErr) {
+            setDownloadError(downloadErr?.message || "저장소 다운로드에 실패했습니다.");
+        } finally {
+            setDownloading(false);
+        }
+    }, [repoId, repoDisplayName]);
+
     return (
         <div className="public-repo-detail-page">
             <Header />
@@ -423,6 +454,20 @@ export default function PublicRepoDetailPage() {
                                 {defaultBranch && <span>기본 브랜치: {defaultBranch}</span>}
                                 {updatedAt && <span>최근 업데이트: {formatDate(updatedAt)}</span>}
                             </div>
+                            <div className="repo-summary-actions">
+                                <button
+                                    className="btn btn-primary"
+                                    onClick={handleDownload}
+                                    disabled={loading || downloading}
+                                >
+                                    {downloading ? "⬇️ 다운로드 준비 중..." : "⬇️ 저장소 다운로드"}
+                                </button>
+                            </div>
+                            {downloadError && (
+                                <div className="repo-summary-error">
+                                    {downloadError}
+                                </div>
+                            )}
                             {description && (
                                 <p className="repo-description">
                                     {description}

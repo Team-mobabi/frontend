@@ -6,6 +6,7 @@ import { useAuth } from "../../features/auth/AuthContext.jsx";
 import { useGit } from '../../features/GitCore/GitContext';
 import { api } from "../../features/API.js";
 import CollaboratorModal from '../../components/Modal/CollaboratorModal';
+import { stripGitFromArchive } from "../../utils/archiveUtils.js";
 
 export default function Header() {
     const nav = useNavigate();
@@ -30,8 +31,14 @@ export default function Header() {
         setDownloadingRepo(true);
         try {
             const blob = await api.repos.downloadRepo(repoId);
+            let downloadBlob = blob;
+            try {
+                downloadBlob = await stripGitFromArchive(blob);
+            } catch (stripError) {
+                console.warn("[Header] Failed to strip .git directory, downloading original archive.", stripError);
+            }
             const repoName = currentRepo?.name || `repo-${repoId}`;
-            const blobUrl = URL.createObjectURL(blob);
+            const blobUrl = URL.createObjectURL(downloadBlob);
             const link = document.createElement("a");
             link.href = blobUrl;
             link.download = `${repoName}.zip`;
