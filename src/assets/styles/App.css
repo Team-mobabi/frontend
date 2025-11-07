@@ -1337,6 +1337,294 @@ body {
     white-space: nowrap
 }
 
+.public-repo-detail-page .page-content {
+    padding: 16px;
+    max-width: 1200px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.detail-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+}
+
+.detail-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 2.1fr) minmax(260px, 1fr);
+    gap: 16px;
+}
+
+.detail-sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.repo-summary h2 {
+    margin: 0 0 8px 0;
+}
+
+.repo-summary .repo-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    font-size: 13px;
+    color: var(--sub);
+}
+
+.repo-summary .repo-description {
+    margin-top: 12px;
+    background: var(--panel-2);
+    padding: 12px;
+    border-radius: 10px;
+    line-height: 1.6;
+}
+
+.repo-summary-actions {
+    margin-top: 12px;
+}
+
+.repo-summary-actions .btn {
+    min-width: 180px;
+}
+
+.repo-summary-error {
+    margin-top: 8px;
+    color: var(--danger);
+    font-size: 13px;
+}
+
+.public-repo-browser {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.browser-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.browser-path {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.path-display {
+    font-family: "Fira Code", "JetBrains Mono", monospace;
+    background: var(--panel-2);
+    padding: 6px 10px;
+    border-radius: 8px;
+    font-size: 12px;
+}
+
+.inline-status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--sub);
+}
+
+.browser-body {
+    display: grid;
+    grid-template-columns: minmax(0, 240px) minmax(0, 1fr);
+    gap: 12px;
+    min-height: 420px;
+}
+
+.browser-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.browser-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    border: 1px solid var(--line);
+    background: var(--panel-2);
+    border-radius: 10px;
+    padding: 10px 12px;
+    font-size: 13px;
+    cursor: pointer;
+    transition: background .2s ease, border-color .2s ease, transform .2s ease;
+    text-align: left;
+    appearance: none;
+}
+
+.browser-item.folder {
+    font-weight: 600;
+}
+
+.browser-item.file {
+    font-family: "Fira Code", "JetBrains Mono", monospace;
+    font-size: 12px;
+}
+
+.browser-item:hover {
+    background: var(--accent-light);
+    border-color: var(--accent);
+    transform: translateY(-1px);
+}
+
+.browser-item.active {
+    border-color: var(--accent);
+    background: rgba(75, 90, 228, 0.1);
+}
+
+.browser-item .item-icon {
+    font-size: 16px;
+}
+
+.browser-item .item-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.browser-item:focus-visible {
+    box-shadow: 0 0 0 2px rgba(75, 90, 228, 0.35);
+    outline: none;
+}
+
+.browser-viewer {
+    background: var(--panel-2);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 14px;
+    overflow: auto;
+    min-height: 360px;
+}
+
+.browser-viewer .empty {
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    color: var(--muted);
+}
+
+.code-viewer {
+    margin: 0;
+    font-family: "Fira Code", "JetBrains Mono", monospace;
+    font-size: 13px;
+    white-space: pre-wrap;
+    word-break: break-word;
+    line-height: 1.6;
+}
+
+.branch-summary-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.spinner.small {
+    width: 16px;
+    height: 16px;
+    border-width: 2px;
+}
+
+.error-box.small {
+    padding: 12px;
+    font-size: 13px;
+}
+
+.branch-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.branch-card {
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 12px;
+    background: var(--panel-2);
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.branch-name {
+    font-weight: 700;
+    font-size: 13px;
+}
+
+.branch-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--sub);
+}
+
+.branch-hash {
+    font-family: "Fira Code", "JetBrains Mono", monospace;
+    background: rgba(75, 90, 228, 0.12);
+    color: var(--accent);
+    padding: 2px 6px;
+    border-radius: 6px;
+}
+
+.branch-message {
+    flex: 1;
+    min-width: 120px;
+    font-weight: 500;
+}
+
+.branch-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 12px;
+    color: var(--muted);
+}
+
+.branch-author {
+    font-weight: 600;
+}
+
+.branch-date {
+    font-style: italic;
+}
+
+.public-repo-browser .empty {
+    color: var(--muted);
+    font-size: 13px;
+    text-align: center;
+    padding: 20px 0;
+}
+
+@media (max-width: 1100px) {
+    .detail-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .browser-body {
+        grid-template-columns: 1fr;
+    }
+}
+
 .page-description {
     font-size: 14px;
     color: var(--sub);
@@ -2724,6 +3012,88 @@ input:checked + .slider:before {
 .help-button:hover {
     background-color: #3a47c4; /* 호버 시 살짝 어둡게 */
     transform: scale(1.1); /* 호버 시 살짝 크게 */
+}
+
+.ai-button {
+    position: fixed;
+    bottom: 84px;
+    right: 20px;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background-color: var(--warn);
+    color: #1f2937;
+    border: none;
+    font-size: 22px;
+    font-weight: bold;
+    line-height: 48px;
+    text-align: center;
+    cursor: pointer;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+    transition: transform 0.2s ease, background-color 0.2s ease;
+    z-index: 101;
+}
+
+.ai-button:hover {
+    background-color: #d97706;
+    transform: scale(1.1);
+}
+
+.ai-chat-messages {
+    max-height: 420px;
+    overflow-y: auto;
+    padding-right: 4px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.ai-chat-message {
+    display: inline-flex;
+    padding: 10px 12px;
+    border-radius: 12px;
+    max-width: 100%;
+    line-height: 1.5;
+    font-size: 13px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+}
+
+.ai-chat-message.from-user {
+    align-self: flex-end;
+    background: var(--accent);
+    color: white;
+    border-top-right-radius: 4px;
+}
+
+.ai-chat-message.from-assistant {
+    align-self: flex-start;
+    background: var(--panel-2);
+    color: var(--text);
+    border-top-left-radius: 4px;
+}
+
+.ai-chat-input-area {
+    display: grid;
+    gap: 8px;
+    margin-top: 16px;
+}
+
+.ai-chat-input-area textarea {
+    width: 100%;
+    min-height: 72px;
+    resize: vertical;
+    font-family: inherit;
+    font-size: 13px;
+    padding: 10px;
+    border-radius: 8px;
+    border: 1px solid var(--line);
+    background: var(--panel-2);
+}
+
+.ai-chat-input-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
 }
 
 /* --- PR 리뷰 폼 스타일 --- */
