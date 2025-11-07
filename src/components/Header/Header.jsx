@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import UserSearchModal from "../Modal/UserSearchModal.jsx";
 import logoImage from '../../assets/styles/logo.png';
 import { useAuth } from "../../features/auth/AuthContext.jsx";
@@ -10,6 +10,7 @@ import { stripGitFromArchive } from "../../utils/archiveUtils.js";
 
 export default function Header() {
     const nav = useNavigate();
+    const location = useLocation();
     const { user, logout } = useAuth();
     const [modalOpen, setModalOpen] = useState(false);
     const { state, dispatch } = useGit();
@@ -21,6 +22,8 @@ export default function Header() {
     const [dropdownOpen, setDropdownOpen] = useState(false);
     const dropdownRef = useRef(null);
     const [downloadingRepo, setDownloadingRepo] = useState(false);
+    const inRepositoryView = location?.pathname?.startsWith("/app");
+    const canDownloadRepository = Boolean(repoId && inRepositoryView);
 
     const handleSignout = () => {
         logout();
@@ -86,14 +89,19 @@ export default function Header() {
             </button>
             {repoId && (
                 <>
-                    <button
-                        className="btn btn-ghost"
-                        onClick={handleDownloadRepo}
-                        title="현재 레포지토리 전체 다운로드"
-                        disabled={downloadingRepo}
-                    >
-                        {downloadingRepo ? "⬇️ 다운로드 중..." : "⬇️ 저장소 다운로드"}
-                    </button>
+                    {canDownloadRepository && (
+                        <div className="header-download-group">
+                            <button
+                                className="btn btn-ghost"
+                                onClick={handleDownloadRepo}
+                                title="현재 레포지토리 전체 다운로드 (.git 제외)"
+                                disabled={downloadingRepo}
+                            >
+                                {downloadingRepo ? "⬇️ 다운로드 중..." : "⬇️ 저장소 다운로드"}
+                            </button>
+                            <span className="download-note">저장소 다운로드 시 .git 폴더는 포함되지 않습니다.</span>
+                        </div>
+                    )}
                     <button
                         className="btn btn-ghost btn-secondary"
                         onClick={() => {
