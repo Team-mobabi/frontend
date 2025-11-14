@@ -89,19 +89,18 @@ export default function Header() {
             </button>
             {repoId && (
                 <>
-                    {canDownloadRepository && (
-                        <div className="header-download-group">
-                            <button
-                                className="btn btn-ghost"
-                                onClick={handleDownloadRepo}
-                                title="현재 레포지토리 전체 다운로드 (.git 제외)"
-                                disabled={downloadingRepo}
-                            >
-                                {downloadingRepo ? "⬇️ 다운로드 중..." : "⬇️ 저장소 다운로드"}
-                            </button>
-                            <span className="download-note">저장소 다운로드 시 .git 폴더는 포함되지 않습니다.</span>
-                        </div>
-                    )}
+                        {canDownloadRepository && (
+                            <div className="header-download-group">
+                                <button
+                                    className="btn btn-ghost"
+                                    onClick={handleDownloadRepo}
+                                    title="저장소 다운로드 시 .git 폴더는 포함되지 않습니다."
+                                    disabled={downloadingRepo}
+                                >
+                                    {downloadingRepo ? "⬇️ 다운로드 중..." : "⬇️ 저장소 다운로드"}
+                                </button>
+                            </div>
+                        )}
                     <button
                         className="btn btn-ghost btn-secondary"
                         onClick={() => {
