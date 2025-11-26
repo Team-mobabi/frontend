@@ -1,0 +1,61 @@
+/* 버튼 툴팁 스타일 */
+.button-tooltip {
+    pointer-events: none;
+}
+
+.button-tooltip-content {
+    position: relative;
+    background: rgba(17, 24, 39, 0.95);
+    color: white;
+    padding: 12px 16px;
+    border-radius: 8px;
+    font-size: 13px;
+    line-height: 1.5;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    max-width: 320px;
+    white-space: nowrap;
+}
+
+.button-tooltip-arrow {
+    position: absolute;
+    width: 0;
+    height: 0;
+    border-style: solid;
+}
+
+.button-tooltip-arrow-bottom {
+    top: -6px;
+    left: 50%;
+    transform: translateX(-50%);
+    border-width: 0 6px 6px 6px;
+    border-color: transparent transparent rgba(17, 24, 39, 0.95) transparent;
+}
+
+.button-tooltip-arrow-top {
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border-width: 0 6px 6px 6px;
+    border-color: transparent transparent rgba(17, 24, 39, 0.95) transparent;
+}
+
+.button-tooltip-arrow-left {
+    left: 100%;
+    top: 50%;
+    transform: translateY(-50%);
+    border-width: 6px 0 6px 6px;
+    border-color: transparent transparent transparent rgba(17, 24, 39, 0.95);
+}
+
+.button-tooltip-arrow-right {
+    right: 100%;
+    top: 50%;
+    transform: translateY(-50%);
+    border-width: 6px 6px 6px 0;
+    border-color: transparent rgba(17, 24, 39, 0.95) transparent transparent;
+}
+
+.button-tooltip-message {
+    color: white;
+}
+

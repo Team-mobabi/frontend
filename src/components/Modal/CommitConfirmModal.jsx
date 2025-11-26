@@ -1,10 +1,27 @@
-import React from "react";
+import React, { useRef, useEffect, useMemo } from "react";
 import StagedDiffView from "../../features/Diff/StagedDiffView";
 
-export default function CommitConfirmModal({ open, onClose, onConfirm, message, onMessageChange }) {
+const CommitConfirmModal = React.memo(function CommitConfirmModal({ open, onClose, onConfirm, message, onMessageChange }) {
+    // 모달이 열릴 때만 새로운 key 생성 (안정적인 key 유지)
+    const stagedDiffKeyRef = useRef(0);
+    
+    useEffect(() => {
+        if (open) {
+            stagedDiffKeyRef.current += 1;
+        }
+    }, [open]);
+    
+    // isMessageEmpty를 메모이제이션하여 불필요한 재계산 방지
+    const isMessageEmpty = useMemo(() => !message.trim(), [message]);
+    
+    // StagedDiffView를 메모이제이션하여 message 변경 시 리렌더링 방지
+    // open이 변경될 때만 새로운 인스턴스 생성
+    const stagedDiffView = useMemo(() => {
+        if (!open) return null;
+        return <StagedDiffView key={`staged-diff-${stagedDiffKeyRef.current}`} />;
+    }, [open]);
+    
     if (!open) return null;
-
-    const isMessageEmpty = !message.trim();
 
     return (
         <div className="modal-backdrop">
@@ -33,7 +50,7 @@ export default function CommitConfirmModal({ open, onClose, onConfirm, message, 
                             올릴 예정인 변경사항 (Staged)
                         </label>
                         <div style={{ maxHeight: 300, overflowY: "auto", border: "1px solid #ddd", borderRadius: 4 }}>
-                            <StagedDiffView />
+                            {stagedDiffView}
                         </div>
                     </div>
                 </div>
@@ -52,4 +69,6 @@ export default function CommitConfirmModal({ open, onClose, onConfirm, message, 
             </div>
         </div>
     );
-}
+});
+
+export default CommitConfirmModal;

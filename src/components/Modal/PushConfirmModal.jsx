@@ -34,14 +34,19 @@ export default function PushConfirmModal({ open, onClose, onConfirm, branch, com
                                 {commits.length === 0 ? (
                                     <div className="empty">Push할 새 커밋이 없습니다.</div>
                                 ) : (
-                                    commits.map(commit => (
-                                        <div key={commit.hash} className="push-row">
-                                            <div className="push-hash" title={commit.hash}>{commit.hash.substring(0, 7)}</div>
-                                            <div className="push-msg">{commit.message}</div>
-                                            <div className="push-author">{commit.author}</div>
-                                            {/* <div className="push-time">{formatTimeAgo(commit.committedAt)}</div> */}
-                                        </div>
-                                    ))
+                                    commits.map((commit, idx) => {
+                                        const hash = commit?.hash || commit?.shortHash || `commit-${idx}`;
+                                        const message = commit?.message || commit?.msg || "(메시지 없음)";
+                                        const author = commit?.author || commit?.committer || "알 수 없음";
+                                        
+                                        return (
+                                            <div key={hash} className="push-row">
+                                                <div className="push-hash" title={hash}>{hash.substring(0, 7)}</div>
+                                                <div className="push-msg">{message}</div>
+                                                <div className="push-author">{author}</div>
+                                            </div>
+                                        );
+                                    })
                                 )}
                             </div>
                             {commits.length > 0 && <p style={{fontSize: '12px', color: 'var(--sub)'}}>원격 저장소의 '{branch}' 브랜치가 업데이트됩니다.</p>}

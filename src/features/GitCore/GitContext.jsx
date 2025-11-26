@@ -20,6 +20,9 @@ const initial = {
     prList: [],
     selectedPrId: null, // [신규] 현재 보고있는 PR ID
     collaboratorModal: { open: false, repoId: null },
+    prCreateModalOpen: false, // PR 생성 모달 열림 상태
+    suggestedWorkflowSteps: [], // 워크플로우 단계 (ActionButtons와 공유)
+    workflowGuide: null, // 워크플로우 가이드 정보 (ActionButtons와 공유)
 };
 
 function reducer(state, action) {
@@ -42,9 +45,25 @@ function reducer(state, action) {
                 collaboratorModal: { open: false, repoId: null },
             };
         case "ADD_SELECTED":
-            return { ...state, stagingArea: Array.from(new Set([...(state.stagingArea||[]), ...action.payload])) };
+            return { 
+                ...state, 
+                stagingArea: Array.from(new Set([...(state.stagingArea||[]), ...action.payload])),
+                gitStatusCounter: (state.gitStatusCounter || 0) + 1 // StagedDiffView 업데이트를 위해
+            };
+        case "SET_STAGING_AREA":
+            return {
+                ...state,
+                stagingArea: Array.isArray(action.payload) ? action.payload : [],
+                gitStatusCounter: (state.gitStatusCounter || 0) + 1,
+            };
         case "REMOVE_FROM_STAGING":
-            return { ...state, stagingArea: (state.stagingArea||[]).filter(n => n !== action.payload) };
+            return { 
+                ...state, 
+                stagingArea: (state.stagingArea||[]).filter(n => n !== action.payload),
+                gitStatusCounter: (state.gitStatusCounter || 0) + 1, // StagedDiffView 업데이트를 위해
+                // 스테이징 영역이 비면 워크플로우 리셋을 위한 플래그
+                workflowResetNeeded: (state.stagingArea||[]).filter(n => n !== action.payload).length === 0
+            };
         case "COMMIT_SUCCESS":
             return { ...state, stagingArea: [], eventLog: [...state.eventLog, { t: Date.now(), kind: "commit", msg: action.message }] };
         case "GRAPH_DIRTY":
@@ -96,6 +115,21 @@ function reducer(state, action) {
                 ...state,
                 collaboratorModal: { open: false, repoId: null },
             };
+
+        case "OPEN_PR_CREATE_MODAL":
+            return { ...state, prCreateModalOpen: true };
+            
+        case "CLOSE_PR_CREATE_MODAL":
+            return { ...state, prCreateModalOpen: false };
+            
+        case "SET_SUGGESTED_WORKFLOW_STEPS":
+            return { ...state, suggestedWorkflowSteps: action.payload || [] };
+            
+        case "CLEAR_SUGGESTED_WORKFLOW_STEPS":
+            return { ...state, suggestedWorkflowSteps: [], workflowGuide: null };
+            
+        case "SET_WORKFLOW_GUIDE":
+            return { ...state, workflowGuide: action.payload };
 
         default:
             return state;

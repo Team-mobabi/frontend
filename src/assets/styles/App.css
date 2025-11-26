@@ -249,6 +249,15 @@ body {
     transition: .2s;
 }
 
+/* ai-suggested 버튼은 기본 border 제거 */
+.btn.ai-suggested,
+button.btn.ai-suggested {
+    border: none !important;
+    border-width: 0 !important;
+    border-style: none !important;
+    border-color: transparent !important;
+}
+
 .btn:hover {
     border-color: var(--accent);
     color: var(--accent)
@@ -265,10 +274,74 @@ body {
     border-color: #3a47c4
 }
 
+.btn-primary.ai-suggested,
+button.btn-primary.ai-suggested,
+button.btn-primary.ai-suggested.btn {
+    background: var(--accent) !important;
+    color: #fff !important;
+    border: none !important;
+    border-width: 0 !important;
+    border-style: none !important;
+    border-color: transparent !important;
+    box-shadow: 0 0 20px rgba(59, 130, 246, 0.6), 0 0 40px rgba(59, 130, 246, 0.4), 0 0 60px rgba(59, 130, 246, 0.2) !important;
+    animation: ai-button-pulse 2s ease-in-out infinite !important;
+    transform: scale(1.02) !important;
+    transition: all 0.3s ease !important;
+    position: relative !important;
+    z-index: 10 !important;
+}
+
+.btn-primary.ai-suggested::before {
+    content: '';
+    position: absolute;
+    top: -4px;
+    left: -4px;
+    right: -4px;
+    bottom: -4px;
+    border-radius: 12px;
+    background: linear-gradient(45deg, rgba(59, 130, 246, 0.5), rgba(147, 51, 234, 0.5), rgba(59, 130, 246, 0.5));
+    background-size: 200% 200%;
+    animation: ai-gradient-shift 3s ease infinite;
+    z-index: -1;
+    opacity: 0.8;
+}
+
 .btn-success {
     background: var(--success);
     color: #fff;
     border-color: var(--success)
+}
+
+.btn-success.ai-suggested,
+button.btn-success.ai-suggested,
+button.btn-success.ai-suggested.btn {
+    background: var(--success) !important;
+    color: #fff !important;
+    border: none !important;
+    border-width: 0 !important;
+    border-style: none !important;
+    border-color: transparent !important;
+    box-shadow: 0 0 20px rgba(34, 197, 94, 0.6), 0 0 40px rgba(34, 197, 94, 0.4), 0 0 60px rgba(34, 197, 94, 0.2) !important;
+    animation: ai-button-pulse 2s ease-in-out infinite !important;
+    transform: scale(1.02) !important;
+    transition: all 0.3s ease !important;
+    position: relative !important;
+    z-index: 10 !important;
+}
+
+.btn-success.ai-suggested::before {
+    content: '';
+    position: absolute;
+    top: -4px;
+    left: -4px;
+    right: -4px;
+    bottom: -4px;
+    border-radius: 12px;
+    background: linear-gradient(45deg, rgba(34, 197, 94, 0.5), rgba(59, 130, 246, 0.5), rgba(34, 197, 94, 0.5));
+    background-size: 200% 200%;
+    animation: ai-gradient-shift 3s ease infinite;
+    z-index: -1;
+    opacity: 0.8;
 }
 
 .btn-warn {
@@ -289,6 +362,177 @@ body {
     color: #b2b9c9 !important;
     border-color: var(--line) !important;
     cursor: not-allowed !important;
+}
+
+/* AI 추천 버튼은 locked 상태여도 강조 표시 */
+.btn-locked.ai-suggested,
+button.btn-locked.ai-suggested,
+.btn-split-wrap.locked.ai-suggested .btn,
+button.btn-split-action.ai-suggested.btn-locked {
+    background: #eef1f6 !important;
+    color: #b2b9c9 !important;
+    border: none !important;
+    border-width: 0 !important;
+    border-style: none !important;
+    border-color: transparent !important;
+    box-shadow: none !important;
+    animation: none !important;
+    cursor: not-allowed !important;
+}
+
+/* data 속성을 이용한 강제 스타일 적용 - 최우선 적용 */
+button[data-ai-suggested="true"],
+button[data-ai-suggested="true"].btn,
+button[data-ai-suggested="true"].btn-success,
+button[data-ai-suggested="true"].btn-primary,
+.btn[data-ai-suggested="true"],
+.btn-success[data-ai-suggested="true"],
+.btn-primary[data-ai-suggested="true"],
+div[data-ai-suggested="true"] button,
+div[data-ai-suggested="true"] .btn {
+    position: relative !important;
+    border: none !important;
+    border-width: 0 !important;
+    border-style: none !important;
+    border-color: transparent !important;
+    box-shadow: 0 0 20px rgba(245, 158, 11, 0.6), 0 0 40px rgba(245, 158, 11, 0.4), 0 0 60px rgba(245, 158, 11, 0.2) !important;
+    animation: ai-button-pulse 2s ease-in-out infinite !important;
+    transform: scale(1.02) !important;
+    z-index: 10 !important;
+    outline: none !important;
+    transition: all 0.3s ease !important;
+}
+
+button[data-ai-suggested="true"]::before,
+button[data-ai-suggested="true"].btn::before,
+button[data-ai-suggested="true"].btn-success::before,
+button[data-ai-suggested="true"].btn-primary::before,
+div[data-ai-suggested="true"] button::before,
+div[data-ai-suggested="true"] .btn::before {
+    content: '';
+    position: absolute;
+    top: -4px;
+    left: -4px;
+    right: -4px;
+    bottom: -4px;
+    border-radius: 12px;
+    background: linear-gradient(45deg, rgba(245, 158, 11, 0.5), rgba(59, 130, 246, 0.5), rgba(245, 158, 11, 0.5));
+    background-size: 200% 200%;
+    animation: ai-gradient-shift 3s ease infinite;
+    z-index: -1;
+    opacity: 0.8;
+}
+
+/* 호버 시 추가 효과 */
+button[data-ai-suggested="true"]:hover,
+button[data-ai-suggested="true"].btn:hover,
+button[data-ai-suggested="true"].btn-success:hover,
+button[data-ai-suggested="true"].btn-primary:hover {
+    animation: none !important;
+    box-shadow: none !important;
+}
+
+/* AI 추천 버튼 스타일 - 더 강력한 선택자 사용 */
+.btn.ai-suggested,
+button.btn.ai-suggested,
+.btn-primary.ai-suggested,
+button.btn-primary.ai-suggested,
+.btn-success.ai-suggested,
+button.btn-success.ai-suggested,
+button.btn-success.ai-suggested.btn,
+button.btn-primary.ai-suggested.btn,
+.btn-split-wrap.ai-suggested .btn,
+.btn-split-wrap.ai-suggested .btn-split-action,
+button.btn-split-action.ai-suggested,
+.btn-split-wrap.ai-suggested button,
+.btn-split-wrap[data-ai-suggested="true"] .btn,
+.btn-split-wrap[data-ai-suggested="true"] .btn-split-action,
+.btn-split-wrap[data-ai-suggested="true"] button {
+    position: relative !important;
+    border: none !important;
+    border-width: 0 !important;
+    border-style: none !important;
+    border-color: transparent !important;
+    box-shadow: 0 0 20px rgba(245, 158, 11, 0.6), 0 0 40px rgba(245, 158, 11, 0.4), 0 0 60px rgba(245, 158, 11, 0.2) !important;
+    animation: ai-button-pulse 2s ease-in-out infinite !important;
+    transform: scale(1.02) !important;
+    z-index: 10 !important;
+    outline: none !important;
+    transition: all 0.3s ease !important;
+}
+
+.btn.ai-suggested::before,
+button.btn.ai-suggested::before,
+.btn-split-wrap.ai-suggested .btn::before,
+.btn-split-wrap.ai-suggested .btn-split-action::before,
+button.btn-split-action.ai-suggested::before,
+.btn-split-wrap[data-ai-suggested="true"] .btn::before,
+.btn-split-wrap[data-ai-suggested="true"] .btn-split-action::before {
+    content: '';
+    position: absolute;
+    top: -4px;
+    left: -4px;
+    right: -4px;
+    bottom: -4px;
+    border-radius: 12px;
+    background: linear-gradient(45deg, rgba(245, 158, 11, 0.5), rgba(59, 130, 246, 0.5), rgba(245, 158, 11, 0.5));
+    background-size: 200% 200%;
+    animation: ai-gradient-shift 3s ease infinite;
+    z-index: -1;
+    opacity: 0.8;
+}
+
+/* 호버 시 추가 효과 */
+.btn.ai-suggested:hover,
+button.btn.ai-suggested:hover,
+.btn-primary.ai-suggested:hover,
+button.btn-primary.ai-suggested:hover,
+.btn-success.ai-suggested:hover,
+button.btn-success.ai-suggested:hover {
+    animation: none !important;
+    box-shadow: none !important;
+}
+
+@keyframes ai-pulse {
+    0%, 100% {
+        box-shadow: 0 4px 16px rgba(245, 158, 11, 0.4), 0 0 20px rgba(245, 158, 11, 0.3) !important;
+        transform: scale(1.05) !important;
+    }
+    25% {
+        box-shadow: 0 6px 20px rgba(245, 158, 11, 0.5), 0 0 30px rgba(245, 158, 11, 0.4) !important;
+        transform: scale(1.06) !important;
+    }
+    50% {
+        box-shadow: 0 8px 24px rgba(245, 158, 11, 0.6), 0 0 40px rgba(245, 158, 11, 0.5) !important;
+        transform: scale(1.08) !important;
+    }
+    75% {
+        box-shadow: 0 6px 20px rgba(245, 158, 11, 0.5), 0 0 30px rgba(245, 158, 11, 0.4) !important;
+        transform: scale(1.06) !important;
+    }
+}
+
+/* 추가 애니메이션: 깜빡임 효과 */
+@keyframes ai-blink {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.85;
+    }
+}
+
+/* 추가 애니메이션: 흔들림 효과 */
+@keyframes ai-shake {
+    0%, 100% {
+        transform: translateX(0) scale(1.05);
+    }
+    25% {
+        transform: translateX(-2px) scale(1.05);
+    }
+    75% {
+        transform: translateX(2px) scale(1.05);
+    }
 }
 
 .input, .select {
@@ -2464,6 +2708,30 @@ input:checked + .slider:before {
 }
 
 
+/* AI 버튼 애니메이션 키프레임 */
+@keyframes ai-button-pulse {
+    0%, 100% {
+        box-shadow: 0 0 20px rgba(245, 158, 11, 0.6), 0 0 40px rgba(245, 158, 11, 0.4), 0 0 60px rgba(245, 158, 11, 0.2) !important;
+        transform: scale(1.02) !important;
+    }
+    50% {
+        box-shadow: 0 0 30px rgba(245, 158, 11, 0.8), 0 0 60px rgba(245, 158, 11, 0.6), 0 0 90px rgba(245, 158, 11, 0.4) !important;
+        transform: scale(1.05) !important;
+    }
+}
+
+@keyframes ai-gradient-shift {
+    0% {
+        background-position: 0% 50%;
+    }
+    50% {
+        background-position: 100% 50%;
+    }
+    100% {
+        background-position: 0% 50%;
+    }
+}
+
 .btn-mockup {
     border: 1px solid var(--line);
     background: var(--panel);
@@ -3062,31 +3330,238 @@ input:checked + .slider:before {
     padding-right: 4px;
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 16px;
+}
+
+.ai-chat-message-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
 }
 
 .ai-chat-message {
     display: inline-flex;
-    padding: 10px 12px;
-    border-radius: 12px;
-    max-width: 100%;
+    padding: 10px 14px;
+    border-radius: 18px;
+    max-width: 75%;
     line-height: 1.5;
-    font-size: 13px;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+    font-size: 14px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    word-wrap: break-word;
 }
 
 .ai-chat-message.from-user {
     align-self: flex-end;
     background: var(--accent);
     color: white;
-    border-top-right-radius: 4px;
+    border-bottom-right-radius: 4px;
+    margin-left: auto;
 }
 
 .ai-chat-message.from-assistant {
     align-self: flex-start;
     background: var(--panel-2);
     color: var(--text);
-    border-top-left-radius: 4px;
+    border-bottom-left-radius: 4px;
+    margin-right: auto;
+}
+
+/* 빠른 선택 버튼 (Chip 형식) */
+.quick-options-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 8px;
+    padding-left: 4px;
+}
+
+.quick-option-chip {
+    display: inline-flex;
+    align-items: center;
+    padding: 8px 14px;
+    border: 1px solid var(--line);
+    border-radius: 20px;
+    background: var(--panel);
+    color: var(--text);
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+.quick-option-chip:hover:not(:disabled) {
+    background: var(--accent-light);
+    border-color: var(--accent);
+    color: var(--accent);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 6px rgba(75, 90, 228, 0.15);
+}
+
+.quick-option-chip:active:not(:disabled) {
+    transform: translateY(0);
+}
+
+.quick-option-chip:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* 워크플로우 추천 박스 */
+.workflow-suggestion-box {
+    padding: 16px;
+    background: linear-gradient(135deg, var(--panel-2) 0%, var(--panel) 100%);
+    border-radius: 12px;
+    border: 2px solid var(--accent-light);
+    box-shadow: 0 4px 12px rgba(75, 90, 228, 0.1);
+}
+
+.workflow-suggestion-header {
+    margin-bottom: 12px;
+}
+
+.workflow-suggestion-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text);
+}
+
+.workflow-steps-visualization {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 16px;
+    padding: 12px;
+    background: var(--panel);
+    border-radius: 8px;
+    border: 1px solid var(--line);
+}
+
+.workflow-step-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: 12px;
+    background: var(--panel-2);
+    border-radius: 8px;
+    border: 1px solid var(--line);
+    min-width: 140px;
+    max-width: 180px;
+    transition: all 0.2s ease;
+}
+
+.workflow-step-item:hover {
+    background: var(--accent-light);
+    border-color: var(--accent);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(75, 90, 228, 0.15);
+}
+
+.workflow-step-icon {
+    font-size: 24px;
+    line-height: 1;
+}
+
+.workflow-step-label {
+    font-size: 12px;
+    color: var(--text);
+    text-align: center;
+    line-height: 1.3;
+    font-weight: 500;
+}
+
+.workflow-step-explanation {
+    font-size: 11px;
+    color: var(--text-secondary);
+    text-align: center;
+    line-height: 1.4;
+    margin-top: 4px;
+    opacity: 0.8;
+}
+
+.workflow-step-arrow {
+    font-size: 20px;
+    color: var(--accent);
+    font-weight: bold;
+    padding: 0 4px;
+}
+
+.workflow-suggestion-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+}
+
+/* 워크플로우 추천 사이드바 (오른쪽 고정) */
+.workflow-suggestion-sidebar {
+    display: flex;
+    flex-direction: column;
+    padding: 16px;
+    background: linear-gradient(135deg, var(--panel-2) 0%, var(--panel) 100%);
+    border-radius: 12px;
+    border: 2px solid var(--accent-light);
+    box-shadow: 0 4px 12px rgba(75, 90, 228, 0.1);
+    max-height: calc(100vh - 120px);
+    overflow-y: auto;
+    width: 380px;
+    flex-shrink: 0;
+}
+
+.workflow-steps-visualization-vertical {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+    padding: 12px;
+    background: var(--panel);
+    border-radius: 8px;
+    border: 1px solid var(--line);
+}
+
+.workflow-step-item-vertical {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 16px;
+    background: var(--panel-2);
+    border-radius: 8px;
+    border: 2px solid var(--line);
+    width: 100%;
+    transition: all 0.2s ease;
+    position: relative;
+}
+
+.workflow-step-item-vertical:hover {
+    background: var(--accent-light);
+    border-color: var(--accent);
+    transform: translateX(4px);
+    box-shadow: 0 4px 8px rgba(75, 90, 228, 0.15);
+}
+
+.workflow-step-number {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: bold;
+}
+
+.workflow-step-arrow-vertical {
+    font-size: 24px;
+    color: var(--accent);
+    font-weight: bold;
+    padding: 4px 0;
 }
 
 .ai-chat-input-area {
@@ -3111,6 +3586,45 @@ input:checked + .slider:before {
     display: flex;
     justify-content: flex-end;
     gap: 8px;
+}
+
+/* 타이핑 애니메이션 */
+.typing-dots {
+    display: inline-flex;
+    gap: 2px;
+    align-items: center;
+}
+
+.typing-dots span {
+    display: inline-block;
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: currentColor;
+    animation: typing-dot 1.4s ease-in-out infinite;
+}
+
+.typing-dots span:nth-child(1) {
+    animation-delay: 0s;
+}
+
+.typing-dots span:nth-child(2) {
+    animation-delay: 0.2s;
+}
+
+.typing-dots span:nth-child(3) {
+    animation-delay: 0.4s;
+}
+
+@keyframes typing-dot {
+    0%, 60%, 100% {
+        opacity: 0.3;
+        transform: scale(0.8);
+    }
+    30% {
+        opacity: 1;
+        transform: scale(1);
+    }
 }
 
 /* --- PR 리뷰 폼 스타일 --- */
@@ -3303,6 +3817,240 @@ input:checked + .slider:before {
     background: rgba(245, 158, 11, 0.2);
     border: 1px solid rgba(245, 158, 11, 0.38);
     color: var(--text);
+}
+
+/* 워크플로우 가이드 박스 */
+.workflow-guide-box {
+    margin-top: 16px;
+    padding: 16px;
+    background: linear-gradient(135deg, var(--panel-2) 0%, #f8fafc 100%);
+    border-radius: 12px;
+    border: 2px solid var(--warn);
+    box-shadow: 0 4px 12px rgba(245, 158, 11, 0.15);
+}
+
+.workflow-guide-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+    gap: 12px;
+}
+
+.workflow-guide-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.workflow-progress {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex: 1;
+    max-width: 200px;
+}
+
+.workflow-progress-bar {
+    flex: 1;
+    height: 8px;
+    background: var(--line);
+    border-radius: 4px;
+    overflow: hidden;
+    position: relative;
+}
+
+.workflow-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--warn) 0%, #fbbf24 100%);
+    border-radius: 4px;
+    transition: width 0.3s ease;
+    box-shadow: 0 0 8px rgba(245, 158, 11, 0.4);
+}
+
+.workflow-progress-text {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--warn);
+    white-space: nowrap;
+}
+
+.workflow-guide-steps {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.workflow-guide-step {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 12px;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    font-size: 13px;
+    transition: all 0.2s ease;
+}
+
+.workflow-guide-step.active {
+    background: linear-gradient(135deg, var(--warn) 0%, #fbbf24 100%);
+    border-color: var(--warn);
+    color: white;
+    box-shadow: 0 4px 12px rgba(245, 158, 11, 0.4), 0 0 0 2px rgba(245, 158, 11, 0.2);
+    transform: translateY(-2px) scale(1.05);
+    animation: workflow-step-pulse 2s ease-in-out infinite;
+}
+
+.workflow-guide-step.active .workflow-guide-step-label {
+    color: white;
+    font-weight: 600;
+}
+
+.workflow-guide-step.completed {
+    background: var(--success);
+    border-color: var(--success);
+    opacity: 0.8;
+}
+
+.workflow-guide-step.completed .workflow-guide-step-number {
+    background: white;
+    color: var(--success);
+}
+
+.workflow-guide-step.completed .workflow-guide-step-label {
+    color: white;
+    text-decoration: line-through;
+    opacity: 0.9;
+}
+
+@keyframes workflow-step-pulse {
+    0%, 100% {
+        box-shadow: 0 4px 12px rgba(245, 158, 11, 0.4), 0 0 0 2px rgba(245, 158, 11, 0.2);
+        transform: translateY(-2px) scale(1.05);
+    }
+    50% {
+        box-shadow: 0 6px 16px rgba(245, 158, 11, 0.6), 0 0 0 4px rgba(245, 158, 11, 0.3);
+        transform: translateY(-2px) scale(1.08);
+    }
+}
+
+@keyframes tutorial-pulse {
+    0%, 100% {
+        box-shadow: 
+            0 0 0 9999px rgba(0, 0, 0, 0.6),
+            0 0 0 4px var(--warn),
+            0 0 20px rgba(245, 158, 11, 0.5),
+            inset 0 0 20px rgba(245, 158, 11, 0.2);
+    }
+    50% {
+        box-shadow: 
+            0 0 0 9999px rgba(0, 0, 0, 0.6),
+            0 0 0 6px var(--warn),
+            0 0 30px rgba(245, 158, 11, 0.7),
+            inset 0 0 30px rgba(245, 158, 11, 0.3);
+    }
+}
+
+/* 튜토리얼 오버레이 스타일 */
+.tutorial-tooltip {
+    position: absolute;
+    z-index: 10000;
+    max-width: 320px;
+}
+
+.tutorial-tooltip-content {
+    background: linear-gradient(135deg, #fff 0%, #f8fafc 100%);
+    border: 2px solid var(--warn);
+    border-radius: 16px;
+    padding: 16px 20px;
+    box-shadow: 
+        0 8px 24px rgba(0, 0, 0, 0.15),
+        0 0 0 2px rgba(245, 158, 11, 0.2),
+        inset 0 1px 0 rgba(255, 255, 255, 0.8);
+    position: relative;
+}
+
+.tutorial-tooltip-arrow {
+    position: absolute;
+    width: 0;
+    height: 0;
+    border: 10px solid transparent;
+}
+
+.tutorial-tooltip-arrow-bottom {
+    top: -20px;
+    left: 50%;
+    transform: translateX(-50%);
+    border-bottom-color: var(--warn);
+}
+
+.tutorial-tooltip-arrow-top {
+    bottom: -20px;
+    left: 50%;
+    transform: translateX(-50%);
+    border-top-color: var(--warn);
+}
+
+.tutorial-tooltip-arrow-left {
+    right: -20px;
+    top: 50%;
+    transform: translateY(-50%);
+    border-left-color: var(--warn);
+}
+
+.tutorial-tooltip-arrow-right {
+    left: -20px;
+    top: 50%;
+    transform: translateY(-50%);
+    border-right-color: var(--warn);
+}
+
+.tutorial-tooltip-message {
+    font-size: 14px;
+    line-height: 1.6;
+    color: var(--text);
+    font-weight: 500;
+    white-space: pre-line;
+}
+
+.workflow-guide-step-number {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: white;
+    font-size: 11px;
+    font-weight: bold;
+    flex-shrink: 0;
+}
+
+.workflow-guide-step.active .workflow-guide-step-number {
+    background: var(--accent);
+    box-shadow: 0 2px 4px rgba(75, 90, 228, 0.3);
+}
+
+.workflow-guide-step-icon {
+    font-size: 16px;
+    flex-shrink: 0;
+}
+
+.workflow-guide-step-label {
+    color: var(--text);
+    font-weight: 500;
+}
+
+.workflow-guide-hint {
+    font-size: 12px;
+    color: var(--text-secondary);
+    font-style: italic;
 }
 
 .process-toolbar {
@@ -3617,4 +4365,73 @@ input:checked + .slider:before {
     --shadow-medium: 0 6px 12px rgba(0, 0, 0, .08);
     --shadow-extra-small: 0 1px 2px rgba(0, 0, 0, .03);
     --code-bg: #282c34; /* AI 코드 블록 배경 */
+}
+/* =========================
+   Floating Action Buttons
+========================= */
+.floating-ai-button,
+.floating-help-button {
+    position: fixed;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    transition: all 0.3s ease;
+    z-index: 1000;
+}
+
+.floating-ai-button {
+    left: 20px;
+    bottom: 20px;
+    background: rgba(255, 255, 255, 0.9);
+    color: var(--text);
+    border: 1px solid var(--line);
+}
+
+.floating-ai-button:hover {
+    background: rgba(255, 255, 255, 1);
+    transform: scale(1.1);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+}
+
+.floating-help-button {
+    right: 20px;
+    bottom: 20px;
+    background: var(--accent);
+    color: white;
+    border: 2px solid white;
+    font-weight: 700;
+    font-size: 28px;
+}
+
+.floating-help-button:hover {
+    background: var(--accent-dark);
+    transform: scale(1.1);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+}
+
+@media (max-width: 768px) {
+    .floating-ai-button,
+    .floating-help-button {
+        width: 48px;
+        height: 48px;
+        font-size: 20px;
+    }
+    
+    .floating-ai-button {
+        left: 16px;
+        bottom: 16px;
+    }
+    
+    .floating-help-button {
+        right: 16px;
+        bottom: 16px;
+        font-size: 24px;
+    }
 }

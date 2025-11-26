@@ -135,8 +135,9 @@ async function request(method, path, body, options = {}) {
 
                 const refreshData = await refreshRes.json();
                 const newAccessToken = refreshData.accessToken;
+                const newRefreshToken = refreshData.refreshToken;
 
-                setToken(newAccessToken);
+                setToken(newAccessToken, newRefreshToken);
                 processQueue(null, newAccessToken);
 
                 headers["Authorization"] = `Bearer ${newAccessToken}`;
@@ -273,6 +274,10 @@ export const api = {
         diff: (repoId, prId) => request("GET", `/repos/${repoId}/pull-requests/${prId}/diff`),
         createReview: (repoId, prId, payload) => request("POST", `/repos/${repoId}/pull-requests/${prId}/reviews`, payload),
         listReviews: (repoId, prId) => request("GET", `/repos/${repoId}/pull-requests/${prId}/reviews`),
+    },
+    aiAssistant: {
+        ask: (repoId, question) => request("POST", `/repos/${repoId}/ai/ask`, { question }),
+        suggestNext: (repoId) => request("GET", `/repos/${repoId}/ai/suggest-next`),
     },
     request,
 };

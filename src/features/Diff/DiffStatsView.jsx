@@ -48,7 +48,7 @@ export default function DiffStatsView() {
                 setStats(null);
             })
             .finally(() => setLoading(false));
-    }, [selectedRepoId, graphVersion, stagingArea]);
+    }, [selectedRepoId, graphVersion, stagingArea?.length]);
 
     if (loading) return <div className="diff-stats-panel">변경 사항 계산 중...</div>;
     if (!stats || (!stats.totalInsertions && !stats.totalDeletions && !stats.filesChanged)) return null;

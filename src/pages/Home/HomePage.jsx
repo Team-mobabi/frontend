@@ -15,7 +15,6 @@ import FileBrowserView from "../../features/FileBrowser/FileBrowserView";
 import DiffView from "../../features/Diff/DiffView";
 import { useAuth } from "../../features/auth/AuthContext";
 import BeginnerHelp from "../BeginnerHelp";
-import AIChatAssistantModal from "../../components/Modal/AIChatAssistantModal.jsx";
 
 export default function HomePage(){
     const loc = useLocation();
@@ -24,8 +23,7 @@ export default function HomePage(){
     const { user } = useAuth();
 
     const [showWelcome, setShowWelcome] = useState(Boolean(loc.state?.welcome));
-    const [showHelpModal, setShowHelpModal] = useState(false); // --- 👇 도움말 모달 상태 추가 ---
-    const [showAIChat, setShowAIChat] = useState(false);
+    const [showHelpModal, setShowHelpModal] = useState(false);
     const username = loc.state?.username || "환영합니다!";
 
     // ... (useEffect 코드들은 이전과 동일) ...
@@ -158,30 +156,22 @@ export default function HomePage(){
                     )}
 
                     {renderCurrentView()}
+                    
+                    {/* 도움말 버튼 - 오른쪽 하단 */}
+                    <button
+                        className="floating-help-button"
+                        onClick={() => setShowHelpModal(true)}
+                        title="도움말"
+                    >
+                        ?
+                    </button>
                 </div>
             </div>
 
-            {/* --- 👇 도움말 버튼 추가 --- */}
-            <button
-                className="ai-button"
-                onClick={() => setShowAIChat(true)}
-                title="AI 작업 도우미 열기"
-            >
-                🤖
-            </button>
-            <button
-                className="help-button"
-                onClick={() => setShowHelpModal(true)}
-                title="도움말 보기"
-            >
-                ?
-            </button>
-
-            {/* --- 👇 도움말 모달 조건부 렌더링 --- */}
+            {/* 모달들 */}
             {showHelpModal && (
                 <BeginnerHelp onClose={() => setShowHelpModal(false)} />
             )}
-            <AIChatAssistantModal open={showAIChat} onClose={() => setShowAIChat(false)} />
         </div>
     );
 }
