@@ -21,7 +21,7 @@ export default function QuickCommitPushModal({
         setErr("");
 
         // 브랜치 목록 불러오기
-        api.branches.list(repoId)
+        api.가지.목록(repoId)
             .then((list) => {
                 const names = Array.isArray(list?.branches)
                     ? list.branches
@@ -45,7 +45,7 @@ export default function QuickCommitPushModal({
 
     const run = async () => {
         if (!repoId || !filePath) {
-            setErr("레포지토리 또는 파일 경로가 없습니다.");
+            setErr("저장소 또는 파일 경로가 없습니다.");
             return;
         }
         const msg = message.trim() || `chore: update ${filePath}`;
@@ -55,24 +55,24 @@ export default function QuickCommitPushModal({
 
         try {
             // 0) 최신 내용 저장 (PATCH /repos/{repoId}/files)
-            await api.repos.updateFile(repoId, { path: filePath, content: fileContent });
+            await api.저장소.파일수정(repoId, { path: filePath, content: fileContent });
 
             // 1) stage
-            await api.repos.add(repoId, [filePath]);
+            await api.저장소.추가(repoId, [filePath]);
 
             // 2) commit
-            await api.repos.commit(repoId, msg);
+            await api.저장소.저장(repoId, msg);
 
             // 3) (선택) 푸시할 브랜치로 전환
-            await api.branches.switch(repoId, branch);
+            await api.가지.전환(repoId, branch);
 
             // 4) push (업스트림 없으면 게시)
             try {
-                await api.repos.push(repoId, { branch });
+                await api.저장소.올리기(repoId, { branch });
             } catch (e) {
                 const m = e?.message || "";
                 if (m.includes("no upstream") || m.includes("does not exist on remote")) {
-                    await api.repos.push(repoId, { branch, setUpstream: true });
+                    await api.저장소.올리기(repoId, { branch, setUpstream: true });
                 } else {
                     throw e;
                 }
@@ -81,7 +81,7 @@ export default function QuickCommitPushModal({
             onClose?.();
             onDone?.({ branch, message: msg, filePath });
         } catch (e) {
-            setErr(e?.message || "커밋/푸시에 실패했습니다.");
+            setErr(e?.message || "저장/올리기에 실패했습니다.");
         } finally {
             setBusy(false);
         }
@@ -91,7 +91,7 @@ export default function QuickCommitPushModal({
         <div className="modal-backdrop" onClick={() => !busy && onClose?.()}>
             <div className="modal" onClick={(e) => e.stopPropagation()}>
                 <div className="modal-head">
-                    <h4>바로 커밋 & 푸시</h4>
+                    <h4>바로 저장 & 올리기</h4>
                     <button className="modal-close" onClick={() => !busy && onClose?.()}>×</button>
                 </div>
 
@@ -100,7 +100,7 @@ export default function QuickCommitPushModal({
                         파일: <strong>{filePath}</strong>
                     </div>
 
-                    <label style={{ fontSize: 12, color: "var(--sub)" }}>커밋 메시지</label>
+                    <label style={{ fontSize: 12, color: "var(--sub)" }}>저장 메시지</label>
                     <input
                         className="input"
                         value={message}
@@ -108,7 +108,7 @@ export default function QuickCommitPushModal({
                         placeholder="변경 내용을 요약해 주세요"
                     />
 
-                    <label style={{ fontSize: 12, color: "var(--sub)" }}>푸시할 브랜치</label>
+                    <label style={{ fontSize: 12, color: "var(--sub)" }}>올릴 가지</label>
                     <select
                         className="select"
                         value={branch}
@@ -125,7 +125,7 @@ export default function QuickCommitPushModal({
                 <div className="modal-actions">
                     <button className="btn" onClick={() => !busy && onClose?.()}>취소</button>
                     <button className="btn btn-primary" onClick={run}>
-                        {busy ? "처리 중..." : "커밋하고 푸시"}
+                        {busy ? "처리 중..." : "저장하고 올리기"}
                     </button>
                 </div>
             </div>

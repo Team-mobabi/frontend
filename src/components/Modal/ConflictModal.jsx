@@ -88,14 +88,14 @@ export default function ConflictModal() {
             setStatus("loadingList");
             setError("");
 
-            const conflictData = await api.repos.conflicts(repoId);
+            const conflictData = await api.저장소.충돌(repoId);
             const conflictFiles = normalizeConflictFiles(conflictData);
             const hasConflict = Boolean(conflictData?.hasConflict || conflictFiles.length > 0);
 
             // 병합 진행 중 여부 확인
             let merging = false;
             try {
-                const st = await api.repos.status(repoId);
+                const st = await api.저장소.상태(repoId);
                 merging = Boolean(st?.merging || st?.isMerging || st?.mergeHead || st?.mergeInProgress);
             } catch {
                 // 상태 조회 실패 시에는 넘어감
@@ -126,7 +126,7 @@ export default function ConflictModal() {
         setError("");
         setShowFullExpl(false);
         try {
-            const aiData = await api.repos.aiSuggest(repoId, filePath);
+            const aiData = await api.저장소.충돌해결제안(repoId, filePath);
             setSuggestion(aiData);
             setStatus("suggestionReady");
         } catch (e) {
@@ -140,7 +140,7 @@ export default function ConflictModal() {
         setStatus("resolving");
         setError("");
         try {
-            await api.repos.resolve(repoId, {
+            await api.저장소.충돌해결(repoId, {
                 filePath: selectedFile,
                 resolution: "manual",
                 manualContent: suggestion.suggestion,
@@ -159,25 +159,25 @@ export default function ConflictModal() {
 
     const handleFinalizeMerge = async () => {
         try {
-            await api.repos.commit(repoId, mergeMessage || "Merge");
+            await api.저장소.저장(repoId, mergeMessage || "Merge");
             dispatch({ type: "GRAPH_DIRTY" });
             dispatch({ type: "CLOSE_CONFLICT_MODAL" });
         } catch (e) {
-            setError(e?.message || "병합 마무리 커밋에 실패했습니다.");
+            setError(e?.message || "합치기 마무리 저장에 실패했습니다.");
             setStatus("readyToCommit");
         }
     };
 
     const handleAbortMerge = async () => {
-        if (!window.confirm("병합 작업을 중단하고 이전 상태로 되돌리시겠습니까?")) return;
+        if (!window.confirm("합치기 작업을 중단하고 이전 상태로 되돌리시겠습니까?")) return;
         setStatus("aborting");
         setError("");
         try {
-            await api.repos.abortMerge(repoId);
+            await api.저장소.합치기취소(repoId);
             dispatch({ type: "GRAPH_DIRTY" });
             dispatch({ type: "CLOSE_CONFLICT_MODAL" });
         } catch (e) {
-            setError(e?.message || "병합 중단에 실패했습니다.");
+            setError(e?.message || "합치기 중단에 실패했습니다.");
             setStatus("error");
         }
     };
@@ -194,7 +194,7 @@ export default function ConflictModal() {
         <div className="modal-backdrop" onClick={handleClose}>
             <div className="modal" onClick={(e) => e.stopPropagation()} style={{ width: "min(920px, 92vw)" }}>
                 <div className="modal-head">
-                    <h4>🚨 병합 충돌 발생! (AI 해결사)</h4>
+                    <h4>🚨 합치기 충돌 발생! (AI 해결사)</h4>
                     <button className="modal-close" onClick={handleClose}>×</button>
                 </div>
 
@@ -214,10 +214,10 @@ export default function ConflictModal() {
                     {status === "readyToCommit" && (
                         <div style={{ display: "grid", gap: 12 }}>
                             <div className="ai-chat-bubble ai-md">
-                                <strong>병합 준비 완료</strong><br />
-                                충돌이 모두 해결되었고 <code>MERGE_HEAD</code> 상태입니다. 병합을 <strong>마무리 커밋</strong>으로 완료하세요.
+                                <strong>합치기 준비 완료</strong><br />
+                                충돌이 모두 해결되었고 <code>MERGE_HEAD</code> 상태입니다. 합치기를 <strong>마무리 저장</strong>으로 완료하세요.
                             </div>
-                            <label style={{ fontSize: 12, color: "var(--sub)" }}>커밋 메시지</label>
+                            <label style={{ fontSize: 12, color: "var(--sub)" }}>저장 메시지</label>
                             <input
                                 className="input"
                                 value={mergeMessage}
@@ -317,13 +317,13 @@ export default function ConflictModal() {
                         onClick={handleAbortMerge}
                         style={{ marginRight: "auto" }}
                     >
-                        {status === "aborting" ? "중단 중..." : "병합 중단"}
+                        {status === "aborting" ? "중단 중..." : "합치기 중단"}
                     </button>
 
                     <button className="btn" onClick={handleClose}>나중에 해결</button>
 
                     {status === "readyToCommit" ? (
-                        <button className="btn btn-primary" onClick={handleFinalizeMerge}>병합 마무리 커밋</button>
+                        <button className="btn btn-primary" onClick={handleFinalizeMerge}>합치기 마무리 저장</button>
                     ) : (
                         <button
                             className="btn btn-success"

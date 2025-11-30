@@ -7,12 +7,12 @@ export default function MergeBranchModal({ open, onClose, sourceBranch, targetOp
         <div className="modal-backdrop" onClick={onClose}>
             <div className="modal" onClick={e => e.stopPropagation()}>
                 <div className="modal-head">
-                    <h4>브랜치 병합</h4>
+                    <h4>가지 합치기</h4>
                     <button className="modal-close" onClick={onClose}>×</button>
                 </div>
                 <div className="modal-body">
                     <p className="panel-sub" style={{ margin: 0, marginBottom: '16px' }}>
-                        <b>'{sourceBranch}'</b> 브랜치를 어떤 브랜치로 병합할까요?
+                        <b>'{sourceBranch}'</b> 가지를 어떤 가지로 합칠까요?
                     </p>
                     {targetOptions.length > 0 ? (
                         <div className="repo-list">
@@ -21,15 +21,15 @@ export default function MergeBranchModal({ open, onClose, sourceBranch, targetOp
                                     key={branchName}
                                     className="repo-item"
                                     onClick={() => onConfirm(branchName)}
-                                    title={`'${sourceBranch}' → '${branchName}' 병합`}
+                                    title={`'${sourceBranch}' → '${branchName}' 합치기`}
                                 >
                                     <div className="repo-dot" />
-                                    <div className="repo-name">Merge into <b>{branchName}</b></div>
+                                    <div className="repo-name"><b>{branchName}</b>로 합치기</div>
                                 </div>
                             ))}
                         </div>
                     ) : (
-                        <div className="empty">병합할 수 있는 다른 브랜치가 없습니다.</div>
+                        <div className="empty">합칠 수 있는 다른 가지가 없습니다.</div>
                     )}
                 </div>
             </div>

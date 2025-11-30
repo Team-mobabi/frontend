@@ -36,7 +36,7 @@ export default function CollaboratorModal({ open, onClose }) {
         setLoading(true);
         setError('');
         try {
-            const data = await api.collaborators.list(repoId);
+            const data = await api.협업자.목록(repoId);
             setCollaborators(data.collaborators || data || []);
         } catch (err) {
             setError(err.message || '목록을 불러오는 데 실패했습니다.');
@@ -70,7 +70,7 @@ export default function CollaboratorModal({ open, onClose }) {
                 role: newRole   // 'read', 'write', 'admin'
             };
 
-            await api.collaborators.add(repoId, payload);
+            await api.협업자.추가(repoId, payload);
 
             setNewEmail('');       // 입력 필드 비우기
             setNewRole('read');    // 권한 선택 초기화
@@ -95,7 +95,7 @@ export default function CollaboratorModal({ open, onClose }) {
         }
         setError('');
         try {
-            await api.collaborators.remove(repoId, userIdToRemove);
+            await api.협업자.제거(repoId, userIdToRemove);
             fetchCollaborators(); // 목록 새로고침
         } catch (err) {
             setError(err.message || '제거에 실패했습니다.');

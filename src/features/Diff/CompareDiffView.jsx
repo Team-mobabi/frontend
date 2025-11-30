@@ -28,7 +28,7 @@ export default function CompareDiffView() {
         setDiffContent(null);
 
         try {
-            const data = await api.repos.diffCommits(repoId, refs.commitA, refs.commitB);
+            const data = await api.저장소.저장비교(repoId, refs.commitA, refs.commitB);
 
             let diffText = "";
             if (typeof data === 'string') {

@@ -16,7 +16,7 @@ const CommitConfirmModal = React.memo(function CommitConfirmModal({ open, onClos
     // open이 변경될 때만 새로운 인스턴스 생성
     const stagedDiffView = useMemo(() => {
         if (!open) return null;
-        return <StagedDiffView key={`staged-diff-${stagedDiffKeyRef.current}`} />;
+        return <StagedDiffView key={`staged-diff-${stagedDiffKeyRef.current}`} compact={true} collapsible={true} />;
     }, [open]);
     
     if (!open) return null;
@@ -25,13 +25,13 @@ const CommitConfirmModal = React.memo(function CommitConfirmModal({ open, onClos
         <div className="modal-backdrop">
             <div className="modal" style={{ width: "60vw", minWidth: 600, maxWidth: 900 }}>
                 <div className="modal-head">
-                    <h4>현재 상태 저장 (커밋)</h4>
+                    <h4>현재 상태 저장</h4>
                     <button className="btn-close" onClick={onClose}>×</button>
                 </div>
                 <div className="modal-body" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
                     <div>
                         <label htmlFor="commitMessage" style={{ display: "block", marginBottom: 8, fontWeight: "bold" }}>
-                            커밋 메시지
+                            저장 메시지
                         </label>
                         <textarea
                             id="commitMessage"
@@ -45,9 +45,15 @@ const CommitConfirmModal = React.memo(function CommitConfirmModal({ open, onClos
                     </div>
                     <div>
                         <label style={{ display: "block", marginBottom: 8, fontWeight: "bold" }}>
-                            올릴 예정인 변경사항 (Staged)
+                            올릴 예정인 변경사항
                         </label>
-                        <div style={{ maxHeight: 300, overflowY: "auto", border: "1px solid #ddd", borderRadius: 4 }}>
+                        <div style={{ 
+                            border: "1px solid #ddd", 
+                            borderRadius: 4,
+                            maxHeight: "400px",
+                            overflowY: "auto",
+                            overflowX: "hidden"
+                        }}>
                             {stagedDiffView}
                         </div>
                     </div>

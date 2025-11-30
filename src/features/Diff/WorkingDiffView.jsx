@@ -22,7 +22,7 @@ export default function WorkingDiffView() {
             setLoading(true);
             setError(null);
             try {
-                const data = await api.repos.diffWorking(repoId);
+                const data = await api.저장소.작업중비교(repoId);
                 let diffText = "";
 
                 if (typeof data === 'string') {

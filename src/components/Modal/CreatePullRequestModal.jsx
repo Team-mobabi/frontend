@@ -16,13 +16,13 @@ export default function CreatePullRequestModal({ open, onClose, onCreated }) {
 
     useEffect(() => {
         if (open && selectedRepoId) {
-            api.branches.list(selectedRepoId)
+            api.가지.목록(selectedRepoId)
                 .then(list => {
                     const branchNames = (list.branches || list || []).map(b => b.name || b);
                     setBranches(branchNames);
                     setSourceBranch(branchNames.find(b => b !== 'main') || '');
                 })
-                .catch(e => setError('브랜치 목록을 불러올 수 없습니다.'));
+                .catch(e => setError('가지 목록을 불러올 수 없습니다.'));
         } else {
             setTitle('')
             setDescription('')
@@ -32,13 +32,13 @@ export default function CreatePullRequestModal({ open, onClose, onCreated }) {
     }, [open, selectedRepoId])
 
     const handleSubmit = async () => {
-        const finalTitle = title.trim() || "Pull Request";
+        const finalTitle = title.trim() || "변경 요청";
         const finalSourceBranch = sourceBranch || "main";
         const finalTargetBranch = targetBranch || "main";
         setBusy(true);
         setError('');
         try {
-            await api.pullRequests.create(selectedRepoId, {
+            await api.변경요청.생성(selectedRepoId, {
                 title: finalTitle,
                 description: description.trim(), // [수정] 'body' -> 'description'
                 sourceBranch: finalSourceBranch,
@@ -46,7 +46,7 @@ export default function CreatePullRequestModal({ open, onClose, onCreated }) {
             });
             onCreated();
         } catch (e) {
-            setError(e.data?.message || e.message || 'PR 생성에 실패했습니다.');
+            setError(e.data?.message || e.message || '변경 요청 생성에 실패했습니다.');
         } finally {
             setBusy(false);
         }
@@ -61,18 +61,18 @@ export default function CreatePullRequestModal({ open, onClose, onCreated }) {
         <div className="modal-backdrop" onClick={onClose}>
             <div className="modal" onClick={(e) => e.stopPropagation()}>
                 <div className="modal-head">
-                    <h4>새 Pull Request 생성</h4>
+                    <h4>새 변경 요청 생성</h4>
                     <button className="modal-close" onClick={onClose}>×</button>
                 </div>
                 <div className="modal-body" style={{ display: 'grid', gap: '12px' }}>
                     <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
                         <select className="select" style={{ flex: 1 }} value={sourceBranch} onChange={e => setSourceBranch(e.target.value)}>
-                            <option value="">원본 브랜치 선택...</option>
+                            <option value="">원본 가지 선택...</option>
                             {availableSources.map(b => <option key={b} value={b}>{b}</option>)}
                         </select>
                         <span>→</span>
                         <select className="select" style={{ flex: 1 }} value={targetBranch} onChange={e => setTargetBranch(e.target.value)}>
-                            <option value="">대상 브랜치 선택...</option>
+                            <option value="">대상 가지 선택...</option>
                             {availableTargets.map(b => <option key={b} value={b}>{b}</option>)}
                         </select>
                     </div>
@@ -95,7 +95,7 @@ export default function CreatePullRequestModal({ open, onClose, onCreated }) {
                 <div className="modal-actions">
                     <button className="btn" onClick={onClose}>취소</button>
                     <button className="btn btn-primary" onClick={handleSubmit}>
-                        {busy ? '생성 중...' : 'Pull Request 생성'}
+                        {busy ? '생성 중...' : '변경 요청 생성'}
                     </button>
                 </div>
             </div>

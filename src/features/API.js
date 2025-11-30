@@ -35,7 +35,7 @@ function qs(params) {
     return q ? `?${q}` : "";
 }
 
-export function isConflictError(err) {
+export function is충돌오류(err) {
     const msg = (err?.data?.message || err?.message || "").toLowerCase();
     return (
         err?.status === 409 ||
@@ -205,36 +205,36 @@ export const api = {
             return request("GET", `/users/search${qs(params)}`);
         },
     },
-    collaborators: {
-        add: (repoId, payload) => request("POST", `/repos/${repoId}/collaborators`, payload),
-        list: (repoId) => request("GET", `/repos/${repoId}/collaborators`),
-        updateRole: (repoId, userId, payload) => request("PATCH", `/repos/${repoId}/collaborators/${userId}`, payload),
-        remove: (repoId, userId) => request("DELETE", `/repos/${repoId}/collaborators/${userId}`),
+    협업자: {
+        추가: (저장소Id, payload) => request("POST", `/repos/${저장소Id}/collaborators`, payload),
+        목록: (저장소Id) => request("GET", `/repos/${저장소Id}/collaborators`),
+        역할변경: (저장소Id, 사용자Id, payload) => request("PATCH", `/repos/${저장소Id}/collaborators/${사용자Id}`, payload),
+        제거: (저장소Id, 사용자Id) => request("DELETE", `/repos/${저장소Id}/collaborators/${사용자Id}`),
     },
-    repos: {
-        create: (payload) => request("POST", `/repos`, payload),
-        list: (params) => request("GET", `/repos${qs(params)}`),
-        delete: (id) => request("DELETE", `/repos/${id}`),
-        listPublic: (params) => request("GET", `/repos/public${qs(params)}`),
-        listUserPublic: (userId, params) => request("GET", `/repos/public/user/${userId}${qs(params)}`),
-        fork: (repoIdToFork) => request("POST", `/repos/fork`, { sourceRepoId: repoIdToFork }),
-        clone: (payload) => request("POST", `/repos/clone`, payload),
-        addRemote: (id, payload) => request("POST", `/repos/${id}/remote`, payload),
-        addLocalRemote: (id, payload) => request("POST", `/repos/${id}/remote-local`, payload),
-        status: (id) => request("GET", `/repos/${id}/status`),
-        add: (id, files) => request("POST", `/repos/${id}/add`, { files }), // 배열 -> { files: 배열 }
-        commit: (id, message) => request("POST", `/repos/${id}/commit`, { message }),
-        reset: (id, payload) => request("POST", `/repos/${id}/reset`, payload),
-        pull: (id, body) => request("POST", `/repos/${id}/pull`, body),
-        push: (id, body) => request("POST", `/repos/${id}/push`, body),
-        graph: (id, params) => request("GET", `/repos/${id}/graph${qs(params)}`),
-        merge: (id, payload) => request("POST", `/repos/${id}/merge`, payload),
-        abortMerge: (id) => request("POST", `/repos/${id}/merge/abort`),
-        getFiles: (id, params) => request("GET", `/repos/${id}/files${qs(params)}`),
-        createFile: (id, payload) => request("POST", `/repos/${id}/files`, payload),
-        updateFile: (id, payload) => request("PATCH", `/repos/${id}/files`, payload),
-        deleteFile: (id, params) => request("DELETE", `/repos/${id}/files${qs(params)}`),
-        upload: async (id, fileList) => {
+    저장소: {
+        생성: (payload) => request("POST", `/repos`, payload),
+        목록: (params) => request("GET", `/repos${qs(params)}`),
+        삭제: (id) => request("DELETE", `/repos/${id}`),
+        공개목록: (params) => request("GET", `/repos/public${qs(params)}`),
+        사용자공개목록: (사용자Id, params) => request("GET", `/repos/public/user/${사용자Id}${qs(params)}`),
+        복사하기: (복사할저장소Id) => request("POST", `/repos/fork`, { sourceRepoId: 복사할저장소Id }),
+        복제하기: (payload) => request("POST", `/repos/clone`, payload),
+        원격추가: (id, payload) => request("POST", `/repos/${id}/remote`, payload),
+        로컬원격추가: (id, payload) => request("POST", `/repos/${id}/remote-local`, payload),
+        상태: (id) => request("GET", `/repos/${id}/status`),
+        추가: (id, files) => request("POST", `/repos/${id}/add`, { files }), // 배열 -> { files: 배열 }
+        저장: (id, message) => request("POST", `/repos/${id}/commit`, { message }),
+        되돌리기: (id, payload) => request("POST", `/repos/${id}/reset`, payload),
+        가져오기: (id, body) => request("POST", `/repos/${id}/pull`, body),
+        올리기: (id, body) => request("POST", `/repos/${id}/push`, body),
+        그래프: (id, params) => request("GET", `/repos/${id}/graph${qs(params)}`),
+        합치기: (id, payload) => request("POST", `/repos/${id}/merge`, payload),
+        합치기취소: (id) => request("POST", `/repos/${id}/merge/abort`),
+        파일목록: (id, params) => request("GET", `/repos/${id}/files${qs(params)}`),
+        파일생성: (id, payload) => request("POST", `/repos/${id}/files`, payload),
+        파일수정: (id, payload) => request("PATCH", `/repos/${id}/files`, payload),
+        파일삭제: (id, params) => request("DELETE", `/repos/${id}/files${qs(params)}`),
+        업로드: async (id, fileList) => {
             const fd = new FormData();
             fileList.forEach((f, index) => {
                 const relativePath = f.webkitRelativePath || f.name;
@@ -246,38 +246,38 @@ export const api = {
             if (!Array.isArray(saved)) saved = [];
             return { saved };
         },
-        conflicts: (id) => request("GET", `/repos/${id}/conflicts`),
-        aiSuggest: (id, filePath) => request("POST", `/repos/${id}/conflicts/ai-suggest`, { filePath }),
-        resolve: (id, resolution) => request("POST", `/repos/${id}/conflicts/resolve`, resolution),
-        downloadFile: (id, params) => request("GET", `/repos/${id}/files/download${qs(params)}`, null, { responseType: "blob" }),
-        downloadRepo: (id, params) => request("GET", `/repos/${id}/download${qs(params)}`, null, { responseType: "blob" }),
-        diffStats: (id) => request("GET", `/repos/${id}/diff/stats`),
-        diffWorking: (id, params) => request("GET", `/repos/${id}/diff/working${qs(params)}`),
-        diffStaged: (id, params) => request("GET", `/repos/${id}/diff/staged${qs(params)}`),
-        diffCommits: (id, commitA, commitB) => request("GET", `/repos/${id}/diff/commits/${commitA}/${commitB}`),
-        diffBranches: (id, params) => request("GET", `/repos/${id}/diff/branches${qs(params)}`),
-        diffCommit: (id, hash) => request("GET", `/repos/${id}/diff/commit/${hash}`),
-        diffFiles: (id, params) => request("GET", `/repos/${id}/diff/files${qs(params)}`),
+        충돌: (id) => request("GET", `/repos/${id}/conflicts`),
+        충돌해결제안: (id, filePath) => request("POST", `/repos/${id}/conflicts/ai-suggest`, { filePath }),
+        충돌해결: (id, resolution) => request("POST", `/repos/${id}/conflicts/resolve`, resolution),
+        파일다운로드: (id, params) => request("GET", `/repos/${id}/files/download${qs(params)}`, null, { responseType: "blob" }),
+        저장소다운로드: (id, params) => request("GET", `/repos/${id}/download${qs(params)}`, null, { responseType: "blob" }),
+        비교통계: (id) => request("GET", `/repos/${id}/diff/stats`),
+        작업중비교: (id, params) => request("GET", `/repos/${id}/diff/working${qs(params)}`),
+        준비된비교: (id, params) => request("GET", `/repos/${id}/diff/staged${qs(params)}`),
+        저장비교: (id, 저장A, 저장B) => request("GET", `/repos/${id}/diff/commits/${저장A}/${저장B}`),
+        가지비교: (id, params) => request("GET", `/repos/${id}/diff/branches${qs(params)}`),
+        저장상세비교: (id, hash) => request("GET", `/repos/${id}/diff/commit/${hash}`),
+        파일비교: (id, params) => request("GET", `/repos/${id}/diff/files${qs(params)}`),
     },
-    branches: {
-        list: (id, params) => request("GET", `/repos/${id}/branches${qs(params)}`),
-        create: (id, body) => request("POST", `/repos/${id}/branches`, body),
-        switch: (id, name) => request("POST", `/repos/${id}/branches/switch`, { name }),
-        delete: (id, branchName) => request("DELETE", `/repos/${id}/branches/${branchName}`),
+    가지: {
+        목록: (id, params) => request("GET", `/repos/${id}/branches${qs(params)}`),
+        생성: (id, body) => request("POST", `/repos/${id}/branches`, body),
+        전환: (id, name) => request("POST", `/repos/${id}/branches/switch`, { name }),
+        삭제: (id, 가지이름) => request("DELETE", `/repos/${id}/branches/${가지이름}`),
     },
-    pullRequests: {
-        create: (repoId, payload) => request("POST", `/repos/${repoId}/pull-requests`, payload),
-        list: (repoId) => request("GET", `/repos/${repoId}/pull-requests`),
-        get: (repoId, prId) => request("GET", `/repos/${repoId}/pull-requests/${prId}`),
-        merge: (repoId, prId) => request("POST", `/repos/${repoId}/pull-requests/${prId}/merge`),
-        close: (repoId, prId) => request("POST", `/repos/${repoId}/pull-requests/${prId}/close`),
-        diff: (repoId, prId) => request("GET", `/repos/${repoId}/pull-requests/${prId}/diff`),
-        createReview: (repoId, prId, payload) => request("POST", `/repos/${repoId}/pull-requests/${prId}/reviews`, payload),
-        listReviews: (repoId, prId) => request("GET", `/repos/${repoId}/pull-requests/${prId}/reviews`),
+    변경요청: {
+        생성: (저장소Id, payload) => request("POST", `/repos/${저장소Id}/pull-requests`, payload),
+        목록: (저장소Id) => request("GET", `/repos/${저장소Id}/pull-requests`),
+        조회: (저장소Id, 변경요청Id) => request("GET", `/repos/${저장소Id}/pull-requests/${변경요청Id}`),
+        합치기: (저장소Id, 변경요청Id) => request("POST", `/repos/${저장소Id}/pull-requests/${변경요청Id}/merge`),
+        닫기: (저장소Id, 변경요청Id) => request("POST", `/repos/${저장소Id}/pull-requests/${변경요청Id}/close`),
+        비교: (저장소Id, 변경요청Id) => request("GET", `/repos/${저장소Id}/pull-requests/${변경요청Id}/diff`),
+        리뷰생성: (저장소Id, 변경요청Id, payload) => request("POST", `/repos/${저장소Id}/pull-requests/${변경요청Id}/reviews`, payload),
+        리뷰목록: (저장소Id, 변경요청Id) => request("GET", `/repos/${저장소Id}/pull-requests/${변경요청Id}/reviews`),
     },
     aiAssistant: {
-        ask: (repoId, question) => request("POST", `/repos/${repoId}/ai/ask`, { question }),
-        suggestNext: (repoId) => request("GET", `/repos/${repoId}/ai/suggest-next`),
+        ask: (저장소Id, question) => request("POST", `/repos/${저장소Id}/ai/ask`, { question }),
+        suggestNext: (저장소Id) => request("GET", `/repos/${저장소Id}/ai/suggest-next`),
     },
     request,
 };

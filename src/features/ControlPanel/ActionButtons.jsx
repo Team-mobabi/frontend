@@ -14,10 +14,10 @@ import ButtonTooltip from "../../components/Tooltip/ButtonTooltip";
 // 단계 라벨 수정
 const STEP_LABEL = { 1: "서버에서 최신 내용 가져오기", 2: "변경된 파일 담기", 3: "변경 내용 설명 쓰고 저장", 4: "서버에 올리기" };
 const STEP_GUIDE = {
-    1: "먼저 원격 저장소와 상태를 맞춰 주세요. 가져오기를 실행하면 서버에서 최신 내용을 받아옵니다.",
-    2: "다음 버전에 포함할 파일을 고르고 담아 주세요. 선택된 파일은 스테이징 영역에 모입니다.",
+    1: "먼저 서버 저장소와 상태를 맞춰 주세요. 가져오기를 실행하면 서버에서 최신 내용을 받아옵니다.",
+    2: "다음 버전에 포함할 파일을 고르고 담아 주세요. 선택된 파일은 준비 영역에 모입니다.",
     3: "담긴 파일들의 변경 이유를 메시지로 남기고 저장합니다. 저장 후에는 서버에 올리기가 준비됩니다.",
-    4: "준비된 커밋을 선택한 브랜치로 업로드합니다. 필요하다면 변경 사항을 다시 확인해 주세요.",
+    4: "준비된 저장을 선택한 가지로 업로드합니다. 필요하다면 변경 사항을 다시 확인해 주세요.",
 };
 
 // 워크플로우 단계 아이콘 및 설명
@@ -30,11 +30,11 @@ const STEP_ICONS = {
 };
 
 const STEP_EXPLANATIONS = {
-    "pull": "원격 저장소에서 최신 변경사항을 가져와 로컬과 동기화합니다.",
-    "add": "변경된 파일 중 다음 버전에 포함할 파일을 선택하여 스테이징 영역에 추가합니다.",
-    "commit": "스테이징된 파일들을 하나의 작업 단위로 묶어 커밋 메시지와 함께 저장합니다.",
-    "push": "로컬에 저장된 커밋을 원격 저장소에 업로드하여 다른 사람과 공유합니다.",
-    "pr": "변경사항을 코드 리뷰를 받기 위해 Pull Request로 생성합니다.",
+    "pull": "서버 저장소에서 최신 변경사항을 가져와 내 저장소와 동기화합니다.",
+    "add": "변경된 파일 중 다음 버전에 포함할 파일을 선택하여 준비 영역에 추가합니다.",
+    "commit": "준비된 파일들을 하나의 작업 단위로 묶어 저장 메시지와 함께 저장합니다.",
+    "push": "내 저장소에 저장된 내용을 서버 저장소에 업로드하여 다른 사람과 공유합니다.",
+    "pr": "변경사항을 코드 리뷰를 받기 위해 변경 요청으로 생성합니다.",
 };
 
 const STEP_SHORT_DESCRIPTIONS = {
@@ -42,7 +42,7 @@ const STEP_SHORT_DESCRIPTIONS = {
     "add": "변경된 파일을 선택하여 담습니다",
     "commit": "변경 내용을 설명하고 저장합니다",
     "push": "저장된 내용을 서버에 올립니다",
-    "pr": "코드 리뷰를 위해 Pull Request를 만듭니다",
+    "pr": "코드 리뷰를 위해 변경 요청을 만듭니다",
 };
 
 // --- Helper Functions ---
@@ -206,9 +206,9 @@ export default function ActionButtons() {
         let cancelled = false;
         
         Promise.all([
-            api.repos.status(repoId), // 현재 상태 확인
-            api.repos.graph(repoId), // 기록 그래프 정보 가져오기
-            api.branches.list(repoId) // 작업 버전 목록 가져오기
+            api.저장소.상태(repoId), // 현재 상태 확인
+            api.저장소.그래프(repoId), // 기록 그래프 정보 가져오기
+            api.가지.목록(repoId) // 작업 버전 목록 가져오기
         ])
             .then(([st, graph, list]) => {
                 if (cancelled) return;
@@ -258,7 +258,7 @@ export default function ActionButtons() {
                 console.error("상태 확인: 프로젝트 정보를 가져오는데 실패했습니다:", err);
                 setNeedsInitialPush(true);
                 setStep(1);
-                api.branches.list(repoId) // 작업 버전 목록이라도 가져오기 시도
+                api.가지.목록(repoId) // 작업 버전 목록이라도 가져오기 시도
                     .then(list => {
                         if (cancelled) return;
                         const fetchedBranches = normalizeBranchList(list);
@@ -299,8 +299,8 @@ export default function ActionButtons() {
         setBusy(true);
         setPullOpen(false);
         try {
-            await api.branches.switch(repoId, branchName); // 해당 작업 버전으로 이동
-            const graph = await api.repos.graph(repoId);
+            await api.가지.전환(repoId, branchName); // 해당 작업 버전으로 이동
+            const graph = await api.저장소.그래프(repoId);
             const transfer = findMissingCommits(graph, branchName, "pull"); // 가져올 기록 찾기
 
             // Diverged 상태 확인 (Local이 뒤처져 있고, Remote가 앞서 있는지)
@@ -310,11 +310,11 @@ export default function ActionButtons() {
                 const ahead = pushTransfer.length;
 
                 if (!window.confirm(
-                    `⚠️ 주의: 로컬과 원격 브랜치가 분기되었습니다.\n\n` +
-                    `로컬: ${ahead}개 커밋 앞섬 (아직 Push 안 됨)\n` +
-                    `원격: ${behind}개 커밋 앞섬\n\n` +
-                    `가져오기를 실행하면 로컬의 변경사항이 병합됩니다.\n` +
-                    `(Hard Reset을 했다면 Reset이 취소됩니다!)\n\n` +
+                    `⚠️ 주의: 로컬과 원격 가지가 분기되었습니다.\n\n` +
+                    `로컬: ${ahead}개 저장 앞섬 (아직 올리기 안 됨)\n` +
+                    `원격: ${behind}개 저장 앞섬\n\n` +
+                    `가져오기를 실행하면 로컬의 변경사항이 합쳐집니다.\n` +
+                    `(되돌리기를 했다면 되돌리기가 취소됩니다!)\n\n` +
                     `그래도 가져오시겠습니까?`
                 )) {
                     setBusy(false);
@@ -322,7 +322,7 @@ export default function ActionButtons() {
                 }
             }
 
-            const pullResult = await api.repos.pull(repoId, {branch: branchName}); // 실제 가져오기 실행
+            const pullResult = await api.저장소.가져오기(repoId, {branch: branchName}); // 실제 가져오기 실행
             if (pullResult?.hasConflict) {
                 setToast("내용 겹침(충돌)이 발생했습니다! AI가 해결책을 제안합니다.");
                 dispatch({type: "OPEN_CONFLICT_MODAL"}); // 충돌 해결 모달 열기 (가정)
@@ -395,16 +395,16 @@ export default function ActionButtons() {
         setBusy(true);
         try {
             // 파일을 서버에 업로드 (필요하다면)
-            const uploadResult = await api.repos.upload(repoId, selection);
+            const uploadResult = await api.저장소.업로드(repoId, selection);
             const uploadedFileNames = Array.isArray(uploadResult?.saved) ? uploadResult.saved : [];
 
             // '담기'(git add) 실행
             if (uploadedFileNames.length > 0) {
-                await api.repos.add(repoId, uploadedFileNames);
+                await api.저장소.추가(repoId, uploadedFileNames);
             }
             
             // 서버의 실제 상태를 가져와서 스테이징 영역 동기화 (삭제된 파일 제외)
-            const status = await api.repos.status(repoId);
+            const status = await api.저장소.상태(repoId);
             const stagedFileNames = Array.isArray(status?.files) 
                 ? status.files.map(f => f.path || f.file || f.name || String(f))
                 : uploadedFileNames; // status.files가 없으면 업로드된 파일 목록 사용
@@ -475,7 +475,7 @@ export default function ActionButtons() {
         dispatch({ type: "SET_ANIMATION_START", payload: "commit" }); // 애니메이션 시작 (가정)
 
         try {
-            await api.repos.commit(repoId, text); // 실제 저장 실행
+            await api.저장소.저장(repoId, text); // 실제 저장 실행
             setMsg(""); // 메시지 입력칸 비우기
             dispatch({ type: "COMMIT_SUCCESS", message: text }); // 성공 상태 업데이트 (가정)
             dispatch({ type: "GRAPH_TICK" }); // 상태 변경 알림 (그래프 UI 등 다른 요소 갱신용)
@@ -500,7 +500,7 @@ export default function ActionButtons() {
                         if (nextNextIndex < suggestedWorkflowSteps.length) {
                             const nextNextStep = suggestedWorkflowSteps[nextNextIndex];
                             if (nextNextStep === "pr") {
-                                showGuideNotice("다음 단계: Pull Request 만들기", "info");
+                                showGuideNotice("다음 단계: 변경 요청 만들기", "info");
                             }
                         } else {
                             showGuideNotice("이 단계를 완료하면 워크플로우가 완료됩니다.", "info");
@@ -511,7 +511,7 @@ export default function ActionButtons() {
                             dispatch({ type: "SET_VIEW", payload: "prs" });
                             dispatch({ type: "OPEN_PR_CREATE_MODAL" }); // PR 생성 모달 자동 열기
                         }, 300);
-                        showGuideNotice("이제 Pull Request를 만들어주세요. 위의 '+ 새 Pull Request' 버튼을 클릭하세요.", "info");
+                        showGuideNotice("이제 변경 요청을 만들어주세요. 위의 '+ 새 변경 요청' 버튼을 클릭하세요.", "info");
                     }
                 } else {
                     // 워크플로우 완료 (commit이 마지막 단계인 경우)
@@ -553,18 +553,18 @@ export default function ActionButtons() {
     const handlePush = async (branchName) => {
         setPushOpen(false);
         try {
-            await api.branches.switch(repoId, branchName);
-            const graph = await api.repos.graph(repoId);
+            await api.가지.전환(repoId, branchName);
+            const graph = await api.저장소.그래프(repoId);
             const transfer = findMissingCommits(graph, branchName, "push");
 
             const isDiverged = Boolean(transfer._diverged);
             if (isDiverged) {
                 const behind = transfer._behind || 0;
                 if (!window.confirm(
-                    `⚠️ 경고: 원격 저장소가 로컬보다 ${behind}개의 커밋 앞서 있습니다.\n\n` +
-                    `이 상태에서 Push하면 원격의 커밋이 삭제될 수 있습니다.\n` +
-                    `일반적으로 먼저 "가져오기(Pull)"를 해야 합니다.\n\n` +
-                    `그래도 강제로 Push하시겠습니까? (Force Push)`
+                    `⚠️ 경고: 서버 저장소가 내 저장소보다 ${behind}개의 저장 앞서 있습니다.\n\n` +
+                    `이 상태에서 올리기를 하면 서버의 저장이 삭제될 수 있습니다.\n` +
+                    `일반적으로 먼저 "가져오기"를 해야 합니다.\n\n` +
+                    `그래도 강제로 올리시겠습니까? (강제 올리기)`
                 )) {
                     return;
                 }
@@ -615,7 +615,7 @@ export default function ActionButtons() {
                 force: isDivergedPush
             };
 
-            await api.repos.push(repoId, pushPayload);
+            await api.저장소.올리기(repoId, pushPayload);
 
             setTimeout(() => {
                 // 워크플로우 추천이 있으면 다음 단계로 이동
@@ -664,7 +664,7 @@ export default function ActionButtons() {
                     try {
                         setBusy(true);
                         // 서버에 새 브랜치 만들면서 올리기 옵션 추가
-                        await api.repos.push(repoId, { branch: branchName, setUpstream: true });
+                        await api.저장소.올리기(repoId, { branch: branchName, setUpstream: true });
                         setTimeout(() => {
                             setStep(1);
                             setToast(`'${branchName}' 버전을 서버에 새로 만들어 올렸습니다.`);
@@ -690,13 +690,29 @@ export default function ActionButtons() {
     // '새 작업 버전 만들기' 처리
     const handleCreateBranch = async () => {
         setPullOpen(false);
-        const newBranchName = prompt(`현재 '${selBranch}' 버전에서 시작하는 새 작업 버전의 이름을 입력하세요:`)?.trim() || `branch-${Date.now()}`;
+        const newBranchName = prompt(`현재 '${selBranch}' 버전에서 시작하는 새 작업 버전의 이름을 입력하세요:`)?.trim();
+        if (!newBranchName) {
+            return; // 사용자가 취소하거나 빈 이름을 입력한 경우
+        }
         setBusy(true);
         try {
-            await api.branches.create(repoId, { name: newBranchName, from: selBranch });
+            // 브랜치 생성
+            await api.가지.생성(repoId, { name: newBranchName, from: selBranch });
+            
+            // 서버에서 브랜치 목록 다시 불러오기
+            const branchList = await api.가지.목록(repoId);
+            const fetchedBranches = normalizeBranchList(branchList);
+            setBranches(fetchedBranches);
+            
+            // 새로 만든 브랜치로 전환
+            await api.가지.전환(repoId, newBranchName);
+            setSelBranch(newBranchName);
+            
+            // 그래프 정보 다시 불러오기
+            const graph = await api.저장소.그래프(repoId);
+            dispatch({ type: "GRAPH_DIRTY" }); // 그래프 새로고침
+            
             setToast(`'${newBranchName}' 작업 버전을 만들었습니다!`);
-            setBranches(prev => (prev.includes(newBranchName) ? prev : [...prev, newBranchName]).sort());
-            dispatch({ type: "GRAPH_TICK" }); // 상태 변경 알림
         } catch (e) {
             fail(e, "새 작업 버전을 만드는 데 실패했어요.");
         } finally {
@@ -716,13 +732,13 @@ export default function ActionButtons() {
         }
         setBusy(true);
         try {
-            await api.branches.delete(repoId, branchName);
+            await api.가지.삭제(repoId, branchName);
             setToast(`'${branchName}' 작업 버전을 삭제했습니다.`);
             setBranches(prev => prev.filter(b => b !== branchName));
             if (selBranch === branchName) {
                 // 삭제된 버전을 보고 있었다면 'main'으로 이동
                 setSelBranch("main");
-                await api.branches.switch(repoId, "main");
+                await api.가지.전환(repoId, "main");
             }
             dispatch({ type: "GRAPH_TICK" }); // 상태 변경 알림
         } catch (e) {
@@ -752,7 +768,7 @@ export default function ActionButtons() {
                 steps: workflowSteps.map((s, idx) => ({
                     step: s,
                     stepNum: stepMap[s],
-                    label: stepMap[s] ? STEP_LABEL[stepMap[s]] : "Pull Request 만들기",
+                    label: stepMap[s] ? STEP_LABEL[stepMap[s]] : "변경 요청 만들기",
                     icon: STEP_ICONS[s] || "📝",
                     explanation: STEP_EXPLANATIONS[s] || "",
                     index: idx + 1,

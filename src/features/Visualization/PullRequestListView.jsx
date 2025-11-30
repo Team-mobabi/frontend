@@ -13,7 +13,7 @@ export default function PullRequestListView() {
     const [error, setError] = useState(null)
     const [modalOpen, setModalOpen] = useState(false)
     
-    // GitContext에서 PR 생성 모달 상태를 동기화
+    // GitContext에서 변경 요청 생성 모달 상태를 동기화
     useEffect(() => {
         if (prCreateModalOpen && !modalOpen) {
             setModalOpen(true);
@@ -24,7 +24,7 @@ export default function PullRequestListView() {
         if (!selectedRepoId) return
 
         setLoading(true)
-        api.pullRequests.list(selectedRepoId)
+        api.변경요청.목록(selectedRepoId)
             .then(data => {
                 dispatch({type: 'SET_PRS', payload: data.pullRequests || data || []})
                 setError(null)
@@ -57,10 +57,10 @@ export default function PullRequestListView() {
                     <div className="process-alert-header">
                         <div>
                             <strong className="process-alert-title">현재 단계</strong>
-                            <span className="process-alert-step">Pull Request 만들기</span>
+                            <span className="process-alert-step">변경 요청 만들기</span>
                         </div>
                     </div>
-                    <p className="process-alert-body">변경사항을 코드 리뷰를 받기 위해 Pull Request를 만들어주세요.</p>
+                    <p className="process-alert-body">변경사항을 코드 리뷰를 받기 위해 변경 요청을 만들어주세요.</p>
                     
                     <div className="workflow-guide-box" style={{ marginTop: "12px" }}>
                         <div className="workflow-guide-title">🤖 추천된 워크플로우</div>
@@ -80,7 +80,7 @@ export default function PullRequestListView() {
                     </div>
                     
                     <div className="process-alert-message info" style={{ marginTop: "12px" }}>
-                        위의 <strong>'+ 새 Pull Request'</strong> 버튼을 클릭하여 PR을 생성하세요. 버튼이 강조 표시되어 있습니다.
+                        위의 <strong>'+ 새 변경 요청'</strong> 버튼을 클릭하여 변경 요청을 생성하세요. 버튼이 강조 표시되어 있습니다.
                     </div>
                 </div>
             )}
@@ -90,18 +90,18 @@ export default function PullRequestListView() {
                     <div className="process-alert-header">
                         <div>
                             <strong className="process-alert-title">현재 단계</strong>
-                            <span className="process-alert-step">Pull Request 만들기</span>
+                            <span className="process-alert-step">변경 요청 만들기</span>
                         </div>
                     </div>
-                    <p className="process-alert-body">변경사항을 코드 리뷰를 받기 위해 Pull Request를 만들어주세요.</p>
+                    <p className="process-alert-body">변경사항을 코드 리뷰를 받기 위해 변경 요청을 만들어주세요.</p>
                     <div className="process-alert-message info">
-                        위의 <strong>'+ 새 Pull Request'</strong> 버튼을 클릭하여 PR을 생성하세요. 버튼이 강조 표시되어 있습니다.
+                        위의 <strong>'+ 새 변경 요청'</strong> 버튼을 클릭하여 변경 요청을 생성하세요. 버튼이 강조 표시되어 있습니다.
                     </div>
                 </div>
             )}
             
             <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px'}}>
-                <h3>Pull Requests</h3>
+                <h3>변경 요청</h3>
                 <button 
                     id="tutorial-pr-btn"
                     className={`btn btn-primary ${(prCreateModalOpen || (workflowGuide && suggestedWorkflowSteps.includes("pr"))) ? "ai-suggested" : ""}`}
@@ -111,7 +111,7 @@ export default function PullRequestListView() {
                         dispatch({ type: "CLOSE_PR_CREATE_MODAL" });
                     }}
                 >
-                    {(prCreateModalOpen || (workflowGuide && suggestedWorkflowSteps.includes("pr"))) && "🤖 "}+ 새 Pull Request
+                    {(prCreateModalOpen || (workflowGuide && suggestedWorkflowSteps.includes("pr"))) && "🤖 "}+ 새 변경 요청
                 </button>
             </div>
 
@@ -121,7 +121,7 @@ export default function PullRequestListView() {
             {!loading && !error && (
                 <div className="pr-list">
                     {prList.length === 0 && (
-                        <div className="empty" style={{padding: '40px 0'}}>열려있는 Pull Request가 없습니다.</div>
+                        <div className="empty" style={{padding: '40px 0'}}>열려있는 변경 요청이 없습니다.</div>
                     )}
                     {prList.map(pr => {
                         const normalizedState = String(pr.state || pr.status || '').trim().toUpperCase() || 'OPEN';
@@ -143,14 +143,14 @@ export default function PullRequestListView() {
                                         <span className="branch-chip">{pr.sourceBranch}</span>
                                         →
                                         <span className="branch-chip">{pr.targetBranch}</span>
-                                        브랜치로 병합을 요청합니다.
+                                        가지로 합치기를 요청합니다.
                                     </div>
                                 </div>
                                 <div className="pr-actions">
-                                    {/* 병합은 상세 화면에서 승인 리뷰가 있어야 가능 */}
+                                    {/* 합치기는 상세 화면에서 승인 리뷰가 있어야 가능 */}
                                     {normalizedState === 'OPEN' ? (
                                         <button className="btn btn-primary" onClick={(e) => openDetail(pr.id, e)}>
-                                            검토/병합
+                                            검토/합치기
                                         </button>
                                     ) : (
                                         <span className="pr-state-chip" style={{textTransform: 'uppercase'}}>
@@ -173,19 +173,19 @@ export default function PullRequestListView() {
                 onCreated={() => {
                     setModalOpen(false);
                     dispatch({ type: "CLOSE_PR_CREATE_MODAL" });
-                    // PR 생성 완료 시 워크플로우 완료 처리
+                    // 변경 요청 생성 완료 시 워크플로우 완료 처리
                     dispatch({ type: "CLEAR_SUGGESTED_WORKFLOW_STEPS" });
                     dispatch({ type: "SET_WORKFLOW_GUIDE", payload: null });
                     dispatch({type: 'GRAPH_DIRTY'});
-                    fetchPRs(); // PR 목록 새로고침
+                    fetchPRs(); // 변경 요청 목록 새로고침
                 }}
             />
             
-            {/* PR 버튼 툴팁 */}
+            {/* 변경 요청 버튼 툴팁 */}
             {(workflowGuide && suggestedWorkflowSteps.includes("pr")) && (
                 <ButtonTooltip
                     targetElementId="tutorial-pr-btn"
-                    message="변경사항을 코드 리뷰를 받기 위해 Pull Request를 만듭니다"
+                    message="변경사항을 코드 리뷰를 받기 위해 변경 요청을 만듭니다"
                     position="bottom"
                     show={true}
                 />

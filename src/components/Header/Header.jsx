@@ -33,7 +33,7 @@ export default function Header() {
         if (!repoId) return;
         setDownloadingRepo(true);
         try {
-            const blob = await api.repos.downloadRepo(repoId);
+            const blob = await api.저장소.저장소다운로드(repoId);
             let downloadBlob = blob;
             try {
                 downloadBlob = await stripGitFromArchive(blob);

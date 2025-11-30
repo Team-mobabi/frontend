@@ -40,7 +40,7 @@ function PublicRepoFileBrowser({ repoId }) {
         setSelectedFile(null);
         setFileContent("");
         try {
-            const data = await api.repos.getFiles(repoId, { path: path || undefined });
+            const data = await api.저장소.파일목록(repoId, { path: path || undefined });
             const folders = Array.isArray(data?.folders) ? data.folders : [];
             const files = Array.isArray(data?.files) ? data.files : [];
             const merged = [...folders, ...files];
@@ -71,7 +71,7 @@ function PublicRepoFileBrowser({ repoId }) {
         setFileLoading(true);
         setError("");
         try {
-            const data = await api.repos.getFiles(repoId, { path: file.path, content: "true" });
+            const data = await api.저장소.파일목록(repoId, { path: file.path, content: "true" });
             setFileContent(data?.content ?? "");
         } catch (err) {
             setError(err.message || "파일 내용을 불러오는 데 실패했습니다.");
@@ -171,8 +171,8 @@ function PublicRepoBranches({ repoId }) {
             setError("");
             try {
                 const [branchList, graph] = await Promise.all([
-                    api.branches.list(repoId),
-                    api.repos.graph(repoId, { simplified: "true" })
+                    api.가지.목록(repoId),
+                    api.저장소.그래프(repoId, { simplified: "true" })
                 ]);
 
                 if (cancelled) return;
@@ -319,7 +319,7 @@ export default function PublicRepoDetailPage() {
             setLoading(true);
             setError("");
             try {
-                const attempt = await api.repos.listPublic({ repoId });
+                const attempt = await api.저장소.공개목록({ repoId });
                 if (cancelled) return;
                 const arr = Array.isArray(attempt?.repositories)
                     ? attempt.repositories
@@ -339,7 +339,7 @@ export default function PublicRepoDetailPage() {
                     return;
                 }
 
-                const fallbackList = await api.repos.listPublic();
+                const fallbackList = await api.저장소.공개목록();
                 if (cancelled) return;
                 const fallbackArr = Array.isArray(fallbackList?.repositories)
                     ? fallbackList.repositories
@@ -399,7 +399,7 @@ export default function PublicRepoDetailPage() {
         setDownloadError("");
         setDownloading(true);
         try {
-            const archive = await api.repos.downloadRepo(repoId);
+            const archive = await api.저장소.저장소다운로드(repoId);
             let sanitizedArchive = archive;
             try {
                 sanitizedArchive = await stripGitFromArchive(archive);

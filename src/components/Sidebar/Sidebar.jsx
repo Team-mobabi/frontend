@@ -15,7 +15,7 @@ export default function Sidebar() {
         const rid = repoIdOf(repo);
         if (window.confirm(`'${repo.name}' 레포지토리를 정말로 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다.`)) {
             try {
-                await api.repos.delete(rid);
+                await api.저장소.삭제(rid);
                 dispatch({ type: "REMOVE_REPO", payload: rid });
             } catch (error) {
                 alert(`삭제 실패: ${error.message}`);

@@ -26,7 +26,7 @@ export default function FileBrowserView() {
         setFileContent("");
         setSelectedFile("");
 
-        api.repos.getFiles(selectedRepoId, { path: path || undefined })
+        api.저장소.파일목록(selectedRepoId, { path: path || undefined })
             .then((data) => {
                 const allItems = [
                     ...(data.folders || []),
@@ -49,7 +49,7 @@ export default function FileBrowserView() {
         } else {
             setLoading(true);
             setSelectedFile(item.path);
-            api.repos.getFiles(selectedRepoId, { path: item.path, content: "true" })
+            api.저장소.파일목록(selectedRepoId, { path: item.path, content: "true" })
                 .then((data) => setFileContent(data.content || ""))
                 .catch((err) => setError(err.message || "파일 내용을 불러올 수 없습니다."))
                 .finally(() => setLoading(false));
@@ -62,7 +62,7 @@ export default function FileBrowserView() {
         setDownloadingPath(item.path);
         setError("");
         try {
-            const blob = await api.repos.downloadFile(selectedRepoId, { path: item.path });
+            const blob = await api.저장소.파일다운로드(selectedRepoId, { path: item.path });
             const downloadName = item.type === "folder"
                 ? `${item.name || item.path.split("/").pop() || "folder"}.zip`
                 : (item.name || item.path.split("/").pop() || "file");
@@ -91,7 +91,7 @@ export default function FileBrowserView() {
         setError("");
         try {
             // 최신 내용 서버 반영
-            await api.repos.updateFile(selectedRepoId, { path: selectedFile, content: fileContent });
+            await api.저장소.파일수정(selectedRepoId, { path: selectedFile, content: fileContent });
             setToast("저장 완료! 커밋/푸시로 이어갑니다.");
             // 저장 성공 → 모달 오픈
             setQcTargetPath(selectedFile);
@@ -117,7 +117,7 @@ export default function FileBrowserView() {
         setLoading(true);
         setError("");
         try {
-            await api.repos.deleteFile(selectedRepoId, { path: item.path });
+            await api.저장소.파일삭제(selectedRepoId, { path: item.path });
             setToast(`${itemType} 삭제 완료: ${item.name}`);
 
             // 현재 선택된 파일이 삭제된 경우 선택 해제

@@ -10,14 +10,14 @@ export default function StagingSummary({ files, repoId }) {
         try {
             // 서버에서 파일 삭제 (스테이징 영역에서도 자동으로 제거됨)
             if (repoId) {
-                await api.repos.deleteFile(repoId, { path: name });
+                await api.저장소.파일삭제(repoId, { path: name });
                 
                 // 상태 새로고침을 위해 그래프 버전 업데이트
                 dispatch({ type: "GRAPH_DIRTY" });
                 
                 // 서버의 실제 상태를 가져와서 스테이징 영역 동기화
                 try {
-                    const status = await api.repos.status(repoId);
+                    const status = await api.저장소.상태(repoId);
                     if (status?.files !== undefined) {
                         // 서버의 실제 staged 파일 목록으로 업데이트
                         const stagedFileNames = Array.isArray(status.files) 

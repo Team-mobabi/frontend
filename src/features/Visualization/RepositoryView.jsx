@@ -16,7 +16,7 @@ const Y = 85;
 const X = 180;
 
 /** 충돌/진행중 오류 감지 */
-function isConflictError(err) {
+function is충돌오류(err) {
     const status = err?.status;
     const msg = (err?.data?.message || err?.message || "").toLowerCase();
     if (status === 409) return true;
@@ -384,7 +384,7 @@ export default function RepositoryView() {
     const { state, dispatch } = useGit();
     const repoId = state?.selectedRepoId;
 
-    // [추가] 현재 레포지토리 이름 찾기
+    // [추가] 현재 저장소 이름 찾기
     const currentRepo = (state.repositories || []).find(r => {
         const rid = repoIdOf(r); // gitUtils.js에서 가져온 함수 사용
         return String(rid) === String(repoId);
@@ -403,8 +403,8 @@ export default function RepositoryView() {
 
     useEffect(() => {
         if (!repoId) { setGraph({ local: null, remote: null }); return; }
-        api.repos
-            .graph(repoId, { simplified: simplified ? "true" : undefined })
+        api.저장소
+            .그래프(repoId, { simplified: simplified ? "true" : undefined })
             .then((g) => {
                 // Helper function: branchHeads에서 시작하여 도달 가능한 모든 커밋 수집
                 const collectReachableCommits = (branchHeads, allCommits) => {
@@ -514,7 +514,7 @@ export default function RepositoryView() {
         setMergeModalState({ open: false, sourceBranch: null });
         if (!sourceBranch || !targetBranch) return;
         try {
-            const mergeResult = await api.repos.merge(repoId, { sourceBranch, targetBranch });
+            const mergeResult = await api.저장소.합치기(repoId, { sourceBranch, targetBranch });
 
             // 하이라이트 설정 (3초 후 자동 해제)
             setLastAction({
@@ -537,7 +537,7 @@ export default function RepositoryView() {
                 dispatch({ type: "OPEN_CONFLICT_MODAL" });
                 return;
             }
-            if (isConflictError(e)) {
+            if (is충돌오류(e)) {
                 dispatch({ type: "OPEN_CONFLICT_MODAL" });
             } else {
                 alert(`병합 실패: ${e?.message || "Unknown error"}`);
@@ -566,14 +566,14 @@ export default function RepositoryView() {
 
         try {
             console.log('[Reset] 시작:', { commitHash, mode });
-            const resetResult = await api.repos.reset(repoId, { commitHash, mode });
+            const resetResult = await api.저장소.되돌리기(repoId, { commitHash, mode });
             console.log('[Reset] 결과:', resetResult);
 
             // 0.5초 대기 (백엔드 상태 완전히 반영되도록)
             await new Promise(resolve => setTimeout(resolve, 500));
 
             // 그래프 즉시 새로고침
-            const g = await api.repos.graph(repoId);
+            const g = await api.저장소.그래프(repoId);
             console.log('[Reset] 새 그래프:', g);
 
             // Helper function: branchHeads에서 시작하여 도달 가능한 모든 커밋 수집

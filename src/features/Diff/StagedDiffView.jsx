@@ -3,7 +3,7 @@ import { api } from "../API";
 import { useGit } from "../GitCore/GitContext";
 import DiffContentDisplay from "./DiffContentDisplay";
 
-const StagedDiffView = React.memo(function StagedDiffView() {
+const StagedDiffView = React.memo(function StagedDiffView({ compact = false, collapsible = true }) {
     const { state } = useGit();
     
     // 필요한 값만 추출
@@ -59,7 +59,7 @@ const StagedDiffView = React.memo(function StagedDiffView() {
             setLoading(true);
             setError(null);
             try {
-                const data = await api.repos.diffStaged(repoId);
+                const data = await api.저장소.준비된비교(repoId);
                 
                 if (!isMountedRef.current) return;
                 
@@ -110,7 +110,7 @@ const StagedDiffView = React.memo(function StagedDiffView() {
         return <div style={{ color: "var(--danger)" }}>{error}</div>;
     }
 
-    return <DiffContentDisplay diffContent={diffContent} />;
+    return <DiffContentDisplay diffContent={diffContent} compact={compact} collapsible={collapsible} />;
 });
 
 export default StagedDiffView;

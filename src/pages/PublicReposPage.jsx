@@ -21,8 +21,8 @@ export default function PublicReposPage() {
         setOwnerEmail(''); // [신규] 이메일 초기화
 
         const fetchRepos = userId
-            ? api.repos.listUserPublic(userId)
-            : api.repos.listPublic();
+            ? api.저장소.사용자공개목록(userId)
+            : api.저장소.공개목록();
 
         fetchRepos
             .then(data => {
@@ -56,7 +56,7 @@ export default function PublicReposPage() {
         setForkingId(repoId);
         setError('');
         try {
-            const forkedRepo = await api.repos.fork(repoId);
+            const forkedRepo = await api.저장소.복사하기(repoId);
             alert(`'${repoToFork.name}' 레포지토리를 성공적으로 내 저장소로 가져왔습니다!`);
             navigate('/app');
         } catch (err) {

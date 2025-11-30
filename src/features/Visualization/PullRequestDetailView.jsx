@@ -22,9 +22,9 @@ export default function PullRequestDetailView() {
         setLoading(true)
         setError(null)
         Promise.all([
-            api.pullRequests.get(selectedRepoId, selectedPrId),
-            api.pullRequests.diff(selectedRepoId, selectedPrId),
-            api.pullRequests.listReviews(selectedRepoId, selectedPrId)
+            api.변경요청.get(selectedRepoId, selectedPrId),
+            api.변경요청.diff(selectedRepoId, selectedPrId),
+            api.변경요청.listReviews(selectedRepoId, selectedPrId)
         ]).then(([detailsData, diffData, reviewsData]) => {
             setDetails(detailsData)
             // diff 응답 정규화: 문자열 또는 파일 배열 모두 처리
@@ -51,7 +51,7 @@ export default function PullRequestDetailView() {
             }
             setReviews(reviewsData.reviews || reviewsData || [])
         }).catch(e => {
-            setError(e.message || 'PR 정보를 불러오는 데 실패했습니다.')
+            setError(e.message || '변경 요청 정보를 불러오는 데 실패했습니다.')
         }).finally(() => {
             setLoading(false)
         })
@@ -86,7 +86,7 @@ export default function PullRequestDetailView() {
 
         setIsSubmitting(true)
         try {
-            await api.pullRequests.createReview(selectedRepoId, selectedPrId, {
+            await api.변경요청.createReview(selectedRepoId, selectedPrId, {
                 comment: comment || (status === 'APPROVED' ? '승인합니다.' : '리뷰를 남깁니다.'),
                 status: status
             })
@@ -101,37 +101,37 @@ export default function PullRequestDetailView() {
 
     const handleMerge = async () => {
         if (!isApproved) {
-            alert('병합하려면 최소 1개 이상의 "승인(Approve)" 리뷰가 필요합니다.');
+            alert('합치려면 최소 1개 이상의 "승인(Approve)" 리뷰가 필요합니다.');
             return;
         }
         if (isPrMerged) {
-            alert('이미 병합된 PR입니다.');
+            alert('이미 합쳐진 변경 요청입니다.');
             return;
         }
-        if (!window.confirm(`PR #${details.id}를 병합하시겠습니까?`)) return
+        if (!window.confirm(`변경 요청 #${details.id}를 합치시겠습니까?`)) return
 
         setIsSubmitting(true)
         try {
-            await api.pullRequests.merge(selectedRepoId, selectedPrId)
+            await api.변경요청.합치기(selectedRepoId, selectedPrId)
             await fetchData()
             dispatch({ type: 'GRAPH_DIRTY' })
             dispatch({ type: 'SET_VIEW', payload: 'prs' })
         } catch (e) {
-            alert(`병합 실패: ${e.message}`)
+            alert(`합치기 실패: ${e.message}`)
         } finally {
             setIsSubmitting(false)
         }
     }
 
     const handleClosePr = async () => {
-        if (!window.confirm(`PR #${details.id}를 닫으시겠습니까?\n병합되지 않은 변경사항은 사라집니다.`)) return;
+        if (!window.confirm(`변경 요청 #${details.id}를 닫으시겠습니까?\n합쳐지지 않은 변경사항은 사라집니다.`)) return;
         setIsSubmitting(true);
         try {
-            await api.pullRequests.close(selectedRepoId, selectedPrId);
+            await api.변경요청.close(selectedRepoId, selectedPrId);
             dispatch({ type: 'GRAPH_DIRTY' });
             dispatch({ type: 'SET_VIEW', payload: 'prs' });
         } catch (e) {
-            alert(`PR 닫기에 실패: ${e.message}`);
+            alert(`변경 요청 닫기에 실패: ${e.message}`);
             if (e.status === 409) {
                 fetchData();
             }
@@ -177,7 +177,7 @@ export default function PullRequestDetailView() {
                 &larr; 목록으로 돌아가기
             </button>
 
-            {loading && <div><span className="spinner" /> PR 정보를 불러오는 중...</div>}
+            {loading && <div><span className="spinner" /> 변경 요청 정보를 불러오는 중...</div>}
             {error && <div style={{ color: 'var(--danger)' }}>{error}</div>}
 
             {!loading && details && (
@@ -187,14 +187,14 @@ export default function PullRequestDetailView() {
                         {isPrOpen ? (
                             <div className="pr-detail-actions">
                                 <button className="btn" onClick={handleClosePr}>
-                                    PR 닫기
+                                    변경 요청 닫기
                                 </button>
                                 <button
                                     className={`btn ${isApproved ? 'btn-success' : ''}`}
                                     onClick={handleMerge}
-                                    title={!isApproved ? '병합하려면 "승인" 리뷰가 필요합니다.' : (isPrMerged ? '이미 병합이 완료된 PR입니다.' : '')}
+                                    title={!isApproved ? '합치려면 "승인" 리뷰가 필요합니다.' : (isPrMerged ? '이미 합치기가 완료된 변경 요청입니다.' : '')}
                                 >
-                                    {isSubmitting ? '병합 중...' : '병합하기'}
+                                    {isSubmitting ? '합치는 중...' : '합치기'}
                                 </button>
                             </div>
                         ) : (
@@ -207,7 +207,7 @@ export default function PullRequestDetailView() {
                         <span className="branch-chip">{details.sourceBranch}</span>
                         →
                         <span className="branch-chip">{details.targetBranch}</span>
-                        브랜치로 병합을 요청합니다.
+                        가지로 합치기를 요청합니다.
                     </div>
 
                     <h3 className="pr-section-title">변경 사항 (Diff)</h3>
@@ -291,7 +291,7 @@ export default function PullRequestDetailView() {
                                 </button>
                             </div>
                             <div style={{ marginTop: 8, fontSize: 12, color: 'var(--sub)' }}>
-                                병합하려면 최소 1개의 승인 리뷰가 필요합니다.
+                                합치려면 최소 1개의 승인 리뷰가 필요합니다.
                             </div>
                         </div>
                     )}

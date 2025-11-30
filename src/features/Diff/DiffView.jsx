@@ -37,7 +37,7 @@ export default function DiffView({ initialTab = "changes", embedded = false }) {
                 <div className="changes-container" style={{ display: "flex", gap: 16 }}>
                     <div className="working-diff-panel" style={{ flex: 1, border: "1px solid #eee", borderRadius: 8 }}>
                         <h4 style={{ padding: "8px 12px", borderBottom: "1px solid #eee", margin: 0, backgroundColor: "#fcfcfc" }}>
-                            작업 중인 변경사항 (Unstaged)
+                            작업 중인 변경사항
                         </h4>
                         <div style={{ padding: 12 }}>
                             <WorkingDiffView />
@@ -45,7 +45,7 @@ export default function DiffView({ initialTab = "changes", embedded = false }) {
                     </div>
                     <div className="staged-diff-panel" style={{ flex: 1, border: "1px solid #eee", borderRadius: 8 }}>
                         <h4 style={{ padding: "8px 12px", borderBottom: "1px solid #eee", margin: 0, backgroundColor: "#fcfcfc" }}>
-                            올릴 예정인 변경사항 (Staged)
+                            올릴 예정인 변경사항
                         </h4>
                         <div style={{ padding: 12 }}>
                             <StagedDiffView />

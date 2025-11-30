@@ -25,21 +25,21 @@ export default function CreateRepoModal({ open, onClose, onRepoCreated }) {
         setBusy(true);
         setErr("");
         try {
-            const newRepo = await api.repos.create({
+            const newRepo = await api.저장소.생성({
                 name: repoName,
                 description: description.trim(),
                 isPrivate
             });
 
             const repoId = newRepo.repoId || newRepo.id;
-            await api.repos.addLocalRemote(repoId, { name: "origin" });
+            await api.저장소.로컬원격추가(repoId, { name: "origin" });
 
             onRepoCreated(newRepo);
             setName("");
             setDescription("");
             onClose();
         } catch (e) {
-            setErr(e.message || "레포지토리 생성 또는 원격 연결에 실패했습니다.");
+            setErr(e.message || "저장소 생성 또는 서버 연결에 실패했습니다.");
         } finally {
             setBusy(false);
         }
@@ -49,13 +49,13 @@ export default function CreateRepoModal({ open, onClose, onRepoCreated }) {
         <div className="modal-backdrop" onClick={onClose}>
             <div className="modal" onClick={(e) => e.stopPropagation()}>
                 <div className="modal-head">
-                    <h4>새 레포지토리 만들기</h4>
+                    <h4>새 저장소 만들기</h4>
                     <button className="modal-close" onClick={onClose}>×</button>
                 </div>
                 <div className="modal-body" style={{ display: "grid", gap: "12px" }}>
                     <input
                         className="input"
-                        placeholder="레포지토리 이름 (예: my-project)"
+                        placeholder="저장소 이름 (예: my-project)"
                         value={name}
                         onChange={(e) => setName(e.target.value)}
                     />
@@ -73,7 +73,7 @@ export default function CreateRepoModal({ open, onClose, onRepoCreated }) {
                             checked={isPrivate}
                             onChange={(e) => setIsPrivate(e.target.checked)}
                         />
-                        비공개 레포지토리로 만들기
+                        비공개 저장소로 만들기
                     </label>
                     <div style={{ fontSize: 12, color: "var(--sub)" }}>
                         공개 설정은 나중에 변경할 수 있어요. 공개로 만들면 누구나 볼 수 있습니다.

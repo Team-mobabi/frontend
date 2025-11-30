@@ -120,7 +120,7 @@ export default function CloneRepoModal({
         // [수정] 이름 유효성 검사를 단순화합니다.
         const repoName = (name || "").trim();
         if (!repoName) {
-            setError("새 레포지토리 이름을 입력하세요.");
+            setError("새 저장소 이름을 입력하세요.");
             return;
         }
 
@@ -159,7 +159,7 @@ export default function CloneRepoModal({
             try {
                 startStep("download", "원본 저장소 아카이브를 다운로드 중…");
                 // [수정 없음] ID만 있으면 기존 로직이 동작합니다.
-                archiveBlob = await api.repos.downloadRepo(repoIdentifier);
+                archiveBlob = await api.저장소.저장소다운로드(repoIdentifier);
                 completeStep("download", "원본 저장소 다운로드 완료");
             } catch (downloadErr) {
                 lastDownloadError = downloadErr;
@@ -167,9 +167,9 @@ export default function CloneRepoModal({
                 pulseStep("download", "전체 다운로드가 실패해 파일 단위 API로 재시도합니다…");
 
                 const fallbackCalls = [
-                    () => api.repos.downloadFile(repoIdentifier),
-                    () => api.repos.downloadFile(repoIdentifier, { path: "" }),
-                    () => api.repos.downloadFile(repoIdentifier, { path: "/" }),
+                    () => api.저장소.파일다운로드(repoIdentifier),
+                    () => api.저장소.파일다운로드(repoIdentifier, { path: "" }),
+                    () => api.저장소.파일다운로드(repoIdentifier, { path: "/" }),
                 ];
 
                 for (const call of fallbackCalls) {
@@ -196,7 +196,7 @@ export default function CloneRepoModal({
             if (!fileEntries.length) {
                 completeStep("extract", "복제할 파일이 없습니다.");
                 skipStep("upload", "업로드할 파일이 없어 건너뜀");
-                skipStep("commit", "커밋할 변경이 없어 건너뜀");
+                skipStep("commit", "저장할 변경이 없어 건너뜀");
                 throw new Error("원본 저장소에서 가져올 파일을 찾을 수 없습니다.");
             }
 
@@ -228,7 +228,7 @@ export default function CloneRepoModal({
                 createPayload.defaultBranch = branchName;
             }
 
-            const createdRepo = await api.repos.create(createPayload);
+            const createdRepo = await api.저장소.생성(createPayload);
             const newRepoId = repoIdOf(createdRepo);
             if (!newRepoId) {
                 failStep("create", "새 저장소 ID를 확인할 수 없습니다.");
@@ -237,7 +237,7 @@ export default function CloneRepoModal({
             completeStep("create", `새 저장소 생성 완료 (ID: ${newRepoId})`);
 
             try {
-                await api.repos.addLocalRemote(newRepoId, { name: "origin" });
+                await api.저장소.로컬원격추가(newRepoId, { name: "origin" });
             } catch (remoteErr) {
                 console.warn("[CloneRepoModal] addLocalRemote 실패:", remoteErr);
             }
@@ -251,7 +251,7 @@ export default function CloneRepoModal({
                         "upload",
                         `파일 업로드 중… ${Math.min(i + UPLOAD_BATCH_SIZE, files.length)}/${files.length}`
                     );
-                    const result = await api.repos.upload(newRepoId, batch);
+                    const result = await api.저장소.업로드(newRepoId, batch);
                     let saved = (result && (result.uploadedFiles?.map((f) => f.path) || result.saved || result.paths || result.files)) || [];
                     if (!Array.isArray(saved)) saved = [];
                     uploadedPaths.push(...saved);
@@ -259,22 +259,22 @@ export default function CloneRepoModal({
 
                 if (uploadedPaths.length) {
                     pulseStep("upload", "파일 스테이징 중…");
-                    await api.repos.add(newRepoId, uploadedPaths);
+                    await api.저장소.추가(newRepoId, uploadedPaths);
                     try {
                         completeStep("upload", `${uploadedPaths.length}개 파일 업로드 및 스테이징 완료`);
                         startStep("commit", "초기 커밋 작성 중…");
                         // [수정] 커밋 메시지에 원본 이름을 사용합니다.
                         const commitMessage = `Clone from ${sourceRepoName || repoIdentifier}`;
-                        await api.repos.commit(newRepoId, commitMessage);
-                        completeStep("commit", `커밋 메시지: "${commitMessage}"`);
+                        await api.저장소.저장(newRepoId, commitMessage);
+                        completeStep("commit", `저장 메시지: "${commitMessage}"`);
                     } catch (commitErr) {
-                        console.warn("[CloneRepoModal] 초기 커밋에 실패했습니다.", commitErr);
-                        failStep("commit", "초기 커밋에 실패했습니다. 스테이징만 완료되었습니다.");
+                        console.warn("[CloneRepoModal] 초기 저장에 실패했습니다.", commitErr);
+                        failStep("commit", "초기 저장에 실패했습니다. 준비만 완료되었습니다.");
                     }
                 }
             } else {
                 skipStep("upload", "복제할 파일이 없어 건너뜁니다.");
-                skipStep("commit", "커밋할 변경이 없어 건너뜁니다.");
+                skipStep("commit", "저장할 변경이 없어 건너뜁니다.");
                 pulseStep("create", "원본 저장소가 비어 있어 빈 저장소만 생성했습니다.");
             }
 
@@ -386,7 +386,7 @@ export default function CloneRepoModal({
                             {/* [삭제] "복제할 저장소 ID..." 입력창 삭제 */}
 
                             <label className="input-label">
-                                새 레포지토리 이름
+                                새 저장소 이름
                                 <input
                                     className="input"
                                     // [수정] placeholder 변경
@@ -397,7 +397,7 @@ export default function CloneRepoModal({
                             </label>
 
                             <label className="input-label">
-                                기본 브랜치 이름
+                                기본 가지 이름
                                 <input
                                     className="input"
                                     placeholder="예: main"
@@ -436,7 +436,7 @@ export default function CloneRepoModal({
                                     </button>
                                 )}
                             </div>
-                            <div>기본 브랜치: <strong>{successRepo.defaultBranch || "main"}</strong></div>
+                            <div>기본 가지: <strong>{successRepo.defaultBranch || "main"}</strong></div>
                             <div>준비된 파일: <strong>{successRepo.fileCount ?? 0}</strong>개</div>
                             <div style={{ fontSize: 12, color: "var(--muted)" }}>
                                 상단 헤더의 <strong>⚙️ 협업자 관리</strong> 버튼을 사용하거나 아래 버튼으로 바로 협업자를 초대해 보세요.

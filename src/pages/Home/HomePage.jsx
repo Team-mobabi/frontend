@@ -40,7 +40,7 @@ export default function HomePage(){
 
         (async () => {
             try {
-                const list = await api.repos.list();
+                const list = await api.저장소.목록();
                 const arr = Array.isArray(list) ? list : (list?.items || []);
                 dispatch({ type: "SET_REPOS", payload: arr });
 
@@ -69,7 +69,7 @@ export default function HomePage(){
 
         let cancelled = false;
 
-        api.pullRequests.list(repoId)
+        api.변경요청.목록(repoId)
             .then(data => {
                 if (cancelled) return;
                 const next = data?.pullRequests || data || [];

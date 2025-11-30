@@ -31,7 +31,7 @@ export default function DiffStatsView() {
         const repoAtCall = selectedRepoId;
         inFlightRepoRef.current = repoAtCall;
 
-        api.repos.diffStats(repoAtCall)
+        api.저장소.비교통계(repoAtCall)
             .then((data) => {
                 if (inFlightRepoRef.current !== repoAtCall) return;
 
