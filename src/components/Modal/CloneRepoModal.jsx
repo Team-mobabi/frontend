@@ -375,7 +375,6 @@ export default function CloneRepoModal({
                                                 className="btn btn-ghost"
                                                 style={{ padding: "2px 8px", fontSize: 12 }}
                                                 onClick={() => handleCopy(sourceRepoId, "원본 저장소 ID")}
-                                                disabled={busy}
                                             >
                                                 복사
                                             </button>
@@ -394,7 +393,6 @@ export default function CloneRepoModal({
                                     placeholder="새 저장소의 이름을 입력하세요."
                                     value={name}
                                     onChange={(e) => setName(e.target.value)}
-                                    disabled={busy}
                                 />
                             </label>
 
@@ -405,7 +403,6 @@ export default function CloneRepoModal({
                                     placeholder="예: main"
                                     value={defaultBranch}
                                     onChange={(e) => setDefaultBranch(e.target.value)}
-                                    disabled={busy}
                                 />
                             </label>
 
@@ -499,10 +496,10 @@ export default function CloneRepoModal({
                 <div className="modal-actions">
                     {!successRepo ? (
                         <>
-                            <button className="btn" onClick={() => !busy && handleClose()} disabled={busy}>
+                            <button className="btn" onClick={() => !busy && handleClose()}>
                                 취소
                             </button>
-                            <button className="btn btn-primary" onClick={handleClone} disabled={busy}>
+                            <button className="btn btn-primary" onClick={handleClone}>
                                 {busy ? "복제 중…" : "복제하기"}
                             </button>
                         </>
@@ -511,7 +508,6 @@ export default function CloneRepoModal({
                             <button
                                 className="btn btn-ghost"
                                 onClick={handleOpenCollaborators}
-                                disabled={!onManageCollaborators}
                             >
                                 협업자 관리 열기
                             </button>

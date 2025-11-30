@@ -341,8 +341,8 @@ export default function AIWorkflowSuggestionModal({
     );
 
     const handleSend = async (text = null, workflowSteps = null) => {
-        const trimmed = text || input.trim();
-        if (!trimmed || busy || !repoId) return;
+        const trimmed = text || input.trim() || "";
+        if (busy) return;
 
         const userMessage = { role: "user", content: trimmed };
         setMessages((prev) => [...prev, userMessage]);
@@ -702,7 +702,7 @@ export default function AIWorkflowSuggestionModal({
                 <div style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
                     <div className="modal-head">
                         <h4>AI 워크플로우 제안</h4>
-                        <button className="modal-close" onClick={onClose} disabled={busy}>×</button>
+                        <button className="modal-close" onClick={onClose}>×</button>
                     </div>
                     <div className="modal-body" style={{ display: "grid", gap: 12, flex: 1 }}>
                         <div className="ai-chat-messages" ref={messagesRef}>
@@ -731,7 +731,6 @@ export default function AIWorkflowSuggestionModal({
                                                     key={optIndex}
                                                     className="quick-option-chip"
                                                     onClick={() => handleQuickOption(option)}
-                                                    disabled={busy}
                                                 >
                                                     {option.text}
                                                 </button>
@@ -774,7 +773,6 @@ export default function AIWorkflowSuggestionModal({
                                                         });
                                                         setSuggestedWorkflow(null);
                                                     }}
-                                                    disabled={busy}
                                                     style={{ color: "var(--text-secondary)" }}
                                                 >
                                                     ← 다른 질문하기
@@ -782,7 +780,6 @@ export default function AIWorkflowSuggestionModal({
                                                 <button 
                                                     className="btn btn-primary" 
                                                     onClick={handleApplyWorkflow}
-                                                    disabled={busy}
                                                 >
                                                     이 워크플로우로 진행하기
                                                 </button>
@@ -799,11 +796,10 @@ export default function AIWorkflowSuggestionModal({
                                 onChange={(event) => setInput(event.target.value)}
                                 onKeyDown={handleKeyDown}
                                 placeholder={placeholder}
-                                disabled={busy}
                             />
                             <div className="ai-chat-input-actions">
-                                <button className="btn" onClick={onClose} disabled={busy}>닫기</button>
-                                <button className="btn btn-primary" onClick={handleSend} disabled={busy || !input.trim()}>
+                                <button className="btn" onClick={onClose}>닫기</button>
+                                <button className="btn btn-primary" onClick={handleSend}>
                                     {busy ? "생각 중..." : "보내기"}
                                 </button>
                             </div>

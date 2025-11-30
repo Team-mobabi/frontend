@@ -71,12 +71,12 @@ export default function RemoteConnectModal({ open, repoId, onClose, onConnected 
 
                     {tab === "remote" ? (
                         <div style={{ display:"grid", gap:10 }}>
-                            <input className="input" placeholder="원격 URL (예: https://github.com/user/repo.git)" value={url} onChange={(e)=>setUrl(e.target.value)} disabled={busy}/>
-                            <input className="input" placeholder="원격 이름 (기본: origin)" value={name} onChange={(e)=>setName(e.target.value)} disabled={busy}/>
+                            <input className="input" placeholder="원격 URL (예: https://github.com/user/repo.git)" value={url} onChange={(e)=>setUrl(e.target.value)}/>
+                            <input className="input" placeholder="원격 이름 (기본: origin)" value={name} onChange={(e)=>setName(e.target.value)}/>
                         </div>
                     ) : (
                         <div style={{ display:"grid", gap:10 }}>
-                            <input className="input" placeholder="로컬 원격 이름 (예: local-backup)" value={localName} onChange={(e)=>setLocalName(e.target.value)} disabled={busy}/>
+                            <input className="input" placeholder="로컬 원격 이름 (예: local-backup)" value={localName} onChange={(e)=>setLocalName(e.target.value)}/>
                             <div className="panel-sub">서버 내 별도 bare 저장소를 생성해 원격으로 연결합니다.</div>
                         </div>
                     )}
@@ -85,11 +85,11 @@ export default function RemoteConnectModal({ open, repoId, onClose, onConnected 
                 </div>
 
                 <div className="modal-actions">
-                    <button className="btn" onClick={onClose} disabled={busy}>취소</button>
+                    <button className="btn" onClick={onClose}>취소</button>
                     {tab==="remote" ? (
-                        <button className="btn btn-primary" onClick={connectRemote} disabled={busy}>{busy ? "연결 중…" : "연결하기"}</button>
+                        <button className="btn btn-primary" onClick={connectRemote}>{busy ? "연결 중…" : "연결하기"}</button>
                     ) : (
-                        <button className="btn btn-primary" onClick={connectLocal} disabled={busy}>{busy ? "생성 중…" : "로컬 원격 생성"}</button>
+                        <button className="btn btn-primary" onClick={connectLocal}>{busy ? "생성 중…" : "로컬 원격 생성"}</button>
                     )}
                 </div>
             </div>

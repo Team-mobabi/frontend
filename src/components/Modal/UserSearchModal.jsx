@@ -71,7 +71,6 @@ export default function UserSearchModal({ open, onClose }) {
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                         onKeyDown={handleSearch}
-                        disabled={isSearching}
                         autoFocus // 모달 열리면 바로 입력 가능하도록
                     />
                     {/* 로딩 스피너 */}

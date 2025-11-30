@@ -147,7 +147,6 @@ export default function FileBrowserView() {
                         parts.pop();
                         fetchData(parts.join("/"));
                     }}
-                    disabled={!currentPath || loading}
                 >
                     &larr; 상위 폴더
                 </button>
@@ -192,7 +191,6 @@ export default function FileBrowserView() {
                                     onMouseEnter={(e) => (e.currentTarget.style.opacity = 1)}
                                     onMouseLeave={(e) => (e.currentTarget.style.opacity = 0.7)}
                                     title="다운로드"
-                                    disabled={downloadingPath === item.path}
                                 >
                                     {downloadingPath === item.path ? "…" : "⬇️"}
                                 </button>
@@ -223,7 +221,7 @@ export default function FileBrowserView() {
                         <div className="editor-container">
                             <div className="editor-toolbar">
                                 <div className="filename">{selectedFile}</div>
-                                <button className="btn btn-primary save-btn" onClick={handleSave} disabled={loading}>
+                                <button className="btn btn-primary save-btn" onClick={handleSave}>
                                     저장
                                 </button>
                             </div>

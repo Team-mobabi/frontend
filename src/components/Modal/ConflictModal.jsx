@@ -236,7 +236,6 @@ export default function ConflictModal() {
                                         key={file}
                                         className={`conflict-file-item ${file === selectedFile ? "active" : ""}`}
                                         onClick={() => handleFileSelect(file)}
-                                        disabled={status === "loadingSuggestion" || status === "resolving" || status === "aborting"}
                                         title={file}
                                     >
                                         {file}
@@ -316,7 +315,6 @@ export default function ConflictModal() {
                     <button
                         className="btn"
                         onClick={handleAbortMerge}
-                        disabled={status === "resolving" || status === "aborting"}
                         style={{ marginRight: "auto" }}
                     >
                         {status === "aborting" ? "중단 중..." : "병합 중단"}
@@ -330,7 +328,6 @@ export default function ConflictModal() {
                         <button
                             className="btn btn-success"
                             onClick={handleResolve}
-                            disabled={status !== "suggestionReady" || status === "resolving" || status === "aborting"}
                         >
                             {status === "resolving" ? "적용 중..." : "이 제안 적용하기"}
                         </button>

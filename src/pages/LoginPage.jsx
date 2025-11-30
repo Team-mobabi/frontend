@@ -39,16 +39,16 @@ export default function LoginPage() {
                 <div className="auth-body">
                     <div className="form-group">
                         <label htmlFor="email">이메일</label>
-                        <input className="input" id="email" type="email" name="email" placeholder="email@example.com" value={form.email} onChange={onChange} disabled={busy} />
+                        <input className="input" id="email" type="email" name="email" placeholder="email@example.com" value={form.email} onChange={onChange} />
                     </div>
                     <div className="form-group">
                         <label htmlFor="password">비밀번호</label>
-                        <input className="input" id="password" type="password" name="password" placeholder="비밀번호" value={form.password} onChange={onChange} disabled={busy} />
+                        <input className="input" id="password" type="password" name="password" placeholder="비밀번호" value={form.password} onChange={onChange} />
                     </div>
                     {err && <div className="auth-error">{err}</div>}
                 </div>
                 <div className="auth-actions">
-                    <button className="btn btn-primary" type="submit" disabled={busy}>
+                    <button className="btn btn-primary" type="submit">
                         {busy ? "로그인 중…" : "로그인"}
                     </button>
                 </div>

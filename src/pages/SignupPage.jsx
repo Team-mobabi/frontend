@@ -100,38 +100,38 @@ export default function SignupPage() {
                         <>
                             <div className="form-group">
                                 <label htmlFor="email">이메일</label>
-                                <input className="input" id="email" type="email" name="email" placeholder="email@example.com" value={form.email} onChange={onChange} disabled={busy} />
+                                <input className="input" id="email" type="email" name="email" placeholder="email@example.com" value={form.email} onChange={onChange} />
                             </div>
                             <div className="form-group">
                                 <label htmlFor="password">비밀번호</label>
-                                <input className="input" id="password" type="password" name="password" placeholder="비밀번호" value={form.password} onChange={onChange} disabled={busy} />
+                                <input className="input" id="password" type="password" name="password" placeholder="비밀번호" value={form.password} onChange={onChange} />
                             </div>
                         </>
                     ) : (
                         <div className="form-group">
                             <label htmlFor="email">이메일</label>
-                            <input className="input" id="email" type="email" name="email" value={form.email} disabled={true} />
+                            <input className="input" id="email" type="email" name="email" value={form.email} readOnly />
 
                             <label htmlFor="password" style={{ marginTop: 10 }}>비밀번호</label>
-                            <input className="input" id="password" type="password" name="password" value="••••••••" disabled={true} />
+                            <input className="input" id="password" type="password" name="password" value="••••••••" readOnly />
 
                             <label htmlFor="code" style={{ marginTop: 10 }}>인증 코드</label>
-                            <input className="input" id="code" type="text" name="code" placeholder="이메일로 전송된 코드" value={code} onChange={onCodeChange} disabled={busy} />
+                            <input className="input" id="code" type="text" name="code" placeholder="이메일로 전송된 코드" value={code} onChange={onCodeChange} />
                         </div>
                     )}
                     {err && <div className={step === "verification" && err.includes("전송") ? "auth-success" : "auth-error"}>{err}</div>}
                 </div>
                 <div className="auth-actions">
                     {step === "credentials" ? (
-                        <button className="btn btn-primary" type="submit" disabled={busy}>
+                        <button className="btn btn-primary" type="submit">
                             {busy ? "가입 중…" : "인증 메일 받기"}
                         </button>
                     ) : (
                         <div style={{ display: "flex", gap: 10, width: "100%" }}>
-                            <button className="btn" type="button" onClick={handleResendCode} disabled={busy} style={{ flex: 1 }}>
+                            <button className="btn" type="button" onClick={handleResendCode} style={{ flex: 1 }}>
                                 코드 재전송
                             </button>
-                            <button className="btn btn-primary" type="submit" disabled={busy} style={{ flex: 2 }}>
+                            <button className="btn btn-primary" type="submit" style={{ flex: 2 }}>
                                 {busy ? "인증 중…" : "인증하고 시작하기"}
                             </button>
                         </div>

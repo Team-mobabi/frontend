@@ -32,7 +32,7 @@ function buildAssistantReply(rawInput) {
         },
         {
             keywords: ["fork", "포크"],
-            message: "공개 레포 목록에서 ‘Fork’ 버튼을 누르면 복제본이 내 계정에 생성됩니다. 이후 ‘저장소 복제’ 기능으로 작업공간에 다운로드할 수 있습니다.",
+            message: "공개 레포 목록에서 '내 저장소로 가져오기' 버튼을 누르면 복제본이 내 계정에 생성됩니다. 이후 '저장소 복제' 기능으로 작업공간에 다운로드할 수 있습니다.",
         },
         {
             keywords: ["download", "다운로드", "zip"],
@@ -88,8 +88,8 @@ export default function AIChatAssistantModal({ open, onClose }) {
     );
 
     const handleSend = () => {
-        const trimmed = input.trim();
-        if (!trimmed || busy) return;
+        const trimmed = input.trim() || "";
+        if (busy) return;
 
         const userMessage = { role: "user", content: trimmed };
         setMessages((prev) => [...prev, userMessage]);
@@ -118,7 +118,7 @@ export default function AIChatAssistantModal({ open, onClose }) {
             <div className="modal" onClick={(event) => event.stopPropagation()} style={{ maxWidth: 520 }}>
                 <div className="modal-head">
                     <h4>AI 작업 도우미</h4>
-                    <button className="modal-close" onClick={onClose} disabled={busy}>×</button>
+                    <button className="modal-close" onClick={onClose}>×</button>
                 </div>
                 <div className="modal-body" style={{ display: "grid", gap: 12 }}>
                     <div className="ai-chat-messages" ref={messagesRef}>
@@ -137,11 +137,10 @@ export default function AIChatAssistantModal({ open, onClose }) {
                             onChange={(event) => setInput(event.target.value)}
                             onKeyDown={handleKeyDown}
                             placeholder={placeholder}
-                            disabled={busy}
                         />
                         <div className="ai-chat-input-actions">
-                            <button className="btn" onClick={onClose} disabled={busy}>닫기</button>
-                            <button className="btn btn-primary" onClick={handleSend} disabled={busy || !input.trim()}>
+                            <button className="btn" onClick={onClose}>닫기</button>
+                            <button className="btn btn-primary" onClick={handleSend}>
                                 {busy ? "생각 중..." : "보내기"}
                             </button>
                         </div>

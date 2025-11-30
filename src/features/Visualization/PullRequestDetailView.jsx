@@ -186,13 +186,12 @@ export default function PullRequestDetailView() {
                         <h2># {details.title}</h2>
                         {isPrOpen ? (
                             <div className="pr-detail-actions">
-                                <button className="btn" onClick={handleClosePr} disabled={isSubmitting}>
+                                <button className="btn" onClick={handleClosePr}>
                                     PR 닫기
                                 </button>
                                 <button
-                                    className={`btn ${isApproved ? 'btn-success' : 'btn-locked'}`}
+                                    className={`btn ${isApproved ? 'btn-success' : ''}`}
                                     onClick={handleMerge}
-                                    disabled={isSubmitting || !isApproved || isPrMerged}
                                     title={!isApproved ? '병합하려면 "승인" 리뷰가 필요합니다.' : (isPrMerged ? '이미 병합이 완료된 PR입니다.' : '')}
                                 >
                                     {isSubmitting ? '병합 중...' : '병합하기'}
@@ -276,20 +275,17 @@ export default function PullRequestDetailView() {
                                 placeholder="리뷰를 작성하세요..."
                                 value={newReviewText}
                                 onChange={e => setNewReviewText(e.target.value)}
-                                disabled={isSubmitting}
                             />
                             <div className="review-form-actions">
                                 <button
                                     className="btn"
                                     onClick={() => handleSubmitReview('commented')}
-                                    disabled={isSubmitting || !newReviewText.trim()}
                                 >
                                     댓글
                                 </button>
                                 <button
                                     className="btn btn-success"
                                     onClick={() => handleSubmitReview('approved')}
-                                    disabled={isSubmitting}
                                 >
                                     {isSubmitting ? '등록 중...' : '승인'}
                                 </button>

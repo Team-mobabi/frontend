@@ -95,7 +95,6 @@ export default function Header() {
                                     className="btn btn-ghost"
                                     onClick={handleDownloadRepo}
                                     title="저장소 다운로드 시 .git 폴더는 포함되지 않습니다."
-                                    disabled={downloadingRepo}
                                 >
                                     {downloadingRepo ? "⬇️ 다운로드 중..." : "⬇️ 저장소 다운로드"}
                                 </button>

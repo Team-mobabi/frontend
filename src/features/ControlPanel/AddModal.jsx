@@ -190,14 +190,10 @@ export default function AddModal({open, onCancel, onConfirm}) {
     function handleConfirm() {
         console.log("모달 확인 버튼 클릭됨!");
         // [수정] "status" 탭 분기 제거
-        if (pickedFiles.length === 0) return;
-        onConfirm(pickedFiles); // 항상 File 객체 배열(pickedFiles)을 전달
+        onConfirm(pickedFiles || []); // 항상 File 객체 배열(pickedFiles)을 전달
     }
 
     if (!open) return null;
-
-    // [수정] "status" 탭 분기 제거
-    const isConfirmDisabled = pickedFiles.length === 0;
 
     return (
         <div className="modal-backdrop" onClick={onCancel}>
@@ -274,8 +270,7 @@ export default function AddModal({open, onCancel, onConfirm}) {
 
                 <div className="modal-actions">
                     <button className="btn" onClick={onCancel}>취소</button>
-                    <button className="btn btn-primary" onClick={handleConfirm}
-                            disabled={isConfirmDisabled}>
+                    <button className="btn btn-primary" onClick={handleConfirm}>
                         선택한 파일/폴더 업로드하여 담기
                     </button>
                 </div>

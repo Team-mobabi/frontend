@@ -49,7 +49,7 @@ export default function PublicReposPage() {
         console.log("Attempting to fork:", repoToFork);
         const repoId = repoToFork?.id || repoToFork?._id || repoToFork?.repoId;
         if (!repoId) {
-            setError('포크할 레포지토리 ID를 찾을 수 없습니다.');
+            setError('가져올 레포지토리 ID를 찾을 수 없습니다.');
             return;
         }
 
@@ -57,12 +57,12 @@ export default function PublicReposPage() {
         setError('');
         try {
             const forkedRepo = await api.repos.fork(repoId);
-            alert(`'${repoToFork.name}' 레포지토리를 성공적으로 포크했습니다!`);
+            alert(`'${repoToFork.name}' 레포지토리를 성공적으로 내 저장소로 가져왔습니다!`);
             navigate('/app');
         } catch (err) {
             const specificError = err.data?.message || err.message;
             console.error("Fork failed:", err);
-            setError(`포크 실패: ${specificError}`);
+            setError(`가져오기 실패: ${specificError}`);
             setForkingId(null);
         }
     };
@@ -76,7 +76,7 @@ export default function PublicReposPage() {
                 <p className="page-description">
                     다른 사용자들이 공개한 레포지토리를 둘러볼 수 있습니다.
                     <br />
-                    Fork 🍴 버튼을 누르면 해당 레포지토리를 내 계정으로 복제하여 자유롭게 수정하고 관리할 수 있습니다.
+                    내 저장소로 가져오기 버튼을 누르면 해당 레포지토리를 내 계정으로 복제하여 자유롭게 수정하고 관리할 수 있습니다.
                 </p>
 
                 {loading && <div><span className="spinner" /> 목록 로딩 중...</div>}
@@ -124,9 +124,8 @@ export default function PublicReposPage() {
                                         <button
                                             className="btn btn-primary"
                                             onClick={() => handleFork(repo)}
-                                            disabled={forkingId === repoDisplayId}
                                         >
-                                            {forkingId === repoDisplayId ? '포크 중...' : 'Fork 🍴'}
+                                            {forkingId === repoDisplayId ? '가져오는 중...' : '내 저장소로 가져오기'}
                                         </button>
                                     </div>
                                 </div>

@@ -95,7 +95,6 @@ function PublicRepoFileBrowser({ repoId }) {
                     <button
                         className="btn btn-ghost"
                         onClick={handleGoUp}
-                        disabled={!currentPath || loading}
                     >
                         ← 상위 폴더
                     </button>
@@ -458,7 +457,6 @@ export default function PublicRepoDetailPage() {
                                   <button
                                       className="btn btn-primary"
                                       onClick={handleDownload}
-                                      disabled={loading || downloading}
                                   >
                                       {downloading ? "⬇️ 다운로드 준비 중..." : "⬇️ 저장소 다운로드"}
                                   </button>

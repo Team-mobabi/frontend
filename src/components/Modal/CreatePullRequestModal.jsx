@@ -32,18 +32,17 @@ export default function CreatePullRequestModal({ open, onClose, onCreated }) {
     }, [open, selectedRepoId])
 
     const handleSubmit = async () => {
-        if (!title || !sourceBranch || !targetBranch) {
-            setError('제목, 원본 브랜치, 대상 브랜치는 필수입니다.');
-            return;
-        }
+        const finalTitle = title.trim() || "Pull Request";
+        const finalSourceBranch = sourceBranch || "main";
+        const finalTargetBranch = targetBranch || "main";
         setBusy(true);
         setError('');
         try {
             await api.pullRequests.create(selectedRepoId, {
-                title: title.trim(),
+                title: finalTitle,
                 description: description.trim(), // [수정] 'body' -> 'description'
-                sourceBranch,
-                targetBranch
+                sourceBranch: finalSourceBranch,
+                targetBranch: finalTargetBranch
             });
             onCreated();
         } catch (e) {
@@ -94,8 +93,8 @@ export default function CreatePullRequestModal({ open, onClose, onCreated }) {
                     {error && <div style={{ color: "var(--danger)", fontSize: 12, marginTop: 4 }}>{error}</div>}
                 </div>
                 <div className="modal-actions">
-                    <button className="btn" onClick={onClose} disabled={busy}>취소</button>
-                    <button className="btn btn-primary" onClick={handleSubmit} disabled={busy}>
+                    <button className="btn" onClick={onClose}>취소</button>
+                    <button className="btn btn-primary" onClick={handleSubmit}>
                         {busy ? '생성 중...' : 'Pull Request 생성'}
                     </button>
                 </div>

@@ -129,7 +129,6 @@ export default function BeginnerHelp({ onClose }) {
                         <button
                             className="btn btn-ghost"
                             onClick={goToPrevPage}
-                            disabled={currentPage === 0} // 첫 페이지면 비활성화
                         >
                             이전
                         </button>

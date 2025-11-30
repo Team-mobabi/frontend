@@ -48,15 +48,7 @@ export default function QuickCommitPushModal({
             setErr("레포지토리 또는 파일 경로가 없습니다.");
             return;
         }
-        if (typeof fileContent !== "string") {
-            setErr("파일 최신 내용이 없습니다. 다시 저장 후 시도하세요.");
-            return;
-        }
-        const msg = message.trim();
-        if (!msg) {
-            setErr("커밋 메시지를 입력하세요.");
-            return;
-        }
+        const msg = message.trim() || `chore: update ${filePath}`;
 
         setBusy(true);
         setErr("");
@@ -113,7 +105,6 @@ export default function QuickCommitPushModal({
                         className="input"
                         value={message}
                         onChange={(e) => setMessage(e.target.value)}
-                        disabled={busy}
                         placeholder="변경 내용을 요약해 주세요"
                     />
 
@@ -122,7 +113,6 @@ export default function QuickCommitPushModal({
                         className="select"
                         value={branch}
                         onChange={(e) => setBranch(e.target.value)}
-                        disabled={busy}
                     >
                         {branches.map((b) => (
                             <option key={b} value={b}>{b}</option>
@@ -133,8 +123,8 @@ export default function QuickCommitPushModal({
                 </div>
 
                 <div className="modal-actions">
-                    <button className="btn" onClick={() => !busy && onClose?.()} disabled={busy}>취소</button>
-                    <button className="btn btn-primary" onClick={run} disabled={busy}>
+                    <button className="btn" onClick={() => !busy && onClose?.()}>취소</button>
+                    <button className="btn btn-primary" onClick={run}>
                         {busy ? "처리 중..." : "커밋하고 푸시"}
                     </button>
                 </div>

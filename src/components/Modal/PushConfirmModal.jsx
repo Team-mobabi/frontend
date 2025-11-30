@@ -58,7 +58,6 @@ export default function PushConfirmModal({ open, onClose, onConfirm, branch, com
                     <button
                         className={`btn ${isDiverged && commits.length === 0 ? 'btn-danger' : 'btn-primary'}`}
                         onClick={onConfirm}
-                        disabled={commits.length === 0 && !isDiverged}
                     >
                         {isDiverged && commits.length === 0 ? 'Force Push 실행' : 'Push 실행'}
                     </button>

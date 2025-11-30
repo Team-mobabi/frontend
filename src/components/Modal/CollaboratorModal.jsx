@@ -47,16 +47,7 @@ export default function CollaboratorModal({ open, onClose }) {
 
     // [수정됨] 협업자 추가 (POST)
     const handleAdd = async () => {
-        if (!repoId) {
-            setError('협업자를 추가할 저장소가 선택되지 않았습니다.');
-            return;
-        }
-
         const emailToSearch = newEmail.trim();
-        if (!emailToSearch) {
-            setError('추가할 사용자의 이메일을 입력하세요.');
-            return;
-        }
         setIsAdding(true);
         setError('');
 
@@ -145,21 +136,19 @@ export default function CollaboratorModal({ open, onClose }) {
                             placeholder="초대할 사용자 이메일"
                             value={newEmail}
                             onChange={(e) => setNewEmail(e.target.value)}
-                            disabled={isAdding || !repoId}
                         />
                         {/* [수정] 권한 선택 (소문자 value) */}
                         <select
                             className="input"
                             value={newRole}
                             onChange={(e) => setNewRole(e.target.value)}
-                            disabled={isAdding || !repoId}
                             style={{ flexBasis: '120px' }}
                         >
                             <option value="read">읽기 (Read)</option>
                             <option value="write">쓰기 (Write)</option>
                             <option value="admin">관리자 (Admin)</option>
                         </select>
-                        <button className="btn btn-primary" onClick={handleAdd} disabled={isAdding || !repoId}>
+                        <button className="btn btn-primary" onClick={handleAdd}>
                             {isAdding ? <span className="spinner" style={{ width: 16, height: 16 }}></span> : '추가'}
                         </button>
                     </div>
@@ -188,7 +177,6 @@ export default function CollaboratorModal({ open, onClose }) {
                                     <button
                                         className="btn btn-sm btn-danger-outline"
                                         onClick={() => handleRemove(user)}
-                                        disabled={!repoId}
                                     >
                                         제거
                                     </button>

@@ -11,8 +11,6 @@ const CommitConfirmModal = React.memo(function CommitConfirmModal({ open, onClos
         }
     }, [open]);
     
-    // isMessageEmpty를 메모이제이션하여 불필요한 재계산 방지
-    const isMessageEmpty = useMemo(() => !message.trim(), [message]);
     
     // StagedDiffView를 메모이제이션하여 message 변경 시 리렌더링 방지
     // open이 변경될 때만 새로운 인스턴스 생성
@@ -61,9 +59,8 @@ const CommitConfirmModal = React.memo(function CommitConfirmModal({ open, onClos
                     <button
                         className="btn btn-success"
                         onClick={onConfirm}
-                        disabled={isMessageEmpty}
                     >
-                        {isMessageEmpty ? "메시지를 입력하세요" : "현재 상태 저장"}
+                        현재 상태 저장
                     </button>
                 </div>
             </div>

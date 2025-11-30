@@ -21,11 +21,7 @@ export default function CreateRepoModal({ open, onClose, onRepoCreated }) {
     if (!open) return null;
 
     const handleCreate = async () => {
-        const repoName = name.trim();
-        if (!repoName) {
-            setErr("레포지토리 이름을 입력하세요.");
-            return;
-        }
+        const repoName = name.trim() || `repo-${Date.now()}`;
         setBusy(true);
         setErr("");
         try {
@@ -62,7 +58,6 @@ export default function CreateRepoModal({ open, onClose, onRepoCreated }) {
                         placeholder="레포지토리 이름 (예: my-project)"
                         value={name}
                         onChange={(e) => setName(e.target.value)}
-                        disabled={busy}
                     />
                     <textarea
                         className="input"
@@ -70,7 +65,6 @@ export default function CreateRepoModal({ open, onClose, onRepoCreated }) {
                         rows="3"
                         value={description}
                         onChange={(e) => setDescription(e.target.value)}
-                        disabled={busy}
                         style={{ resize: "vertical" }}
                     />
                     <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 14 }}>
@@ -78,7 +72,6 @@ export default function CreateRepoModal({ open, onClose, onRepoCreated }) {
                             type="checkbox"
                             checked={isPrivate}
                             onChange={(e) => setIsPrivate(e.target.checked)}
-                            disabled={busy}
                         />
                         비공개 레포지토리로 만들기
                     </label>
@@ -88,8 +81,8 @@ export default function CreateRepoModal({ open, onClose, onRepoCreated }) {
                     {err && <div style={{ color: "var(--danger)", fontSize: 12 }}>{err}</div>}
                 </div>
                 <div className="modal-actions">
-                    <button className="btn" onClick={onClose} disabled={busy}>취소</button>
-                    <button className="btn btn-primary" onClick={handleCreate} disabled={busy}>
+                    <button className="btn" onClick={onClose}>취소</button>
+                    <button className="btn btn-primary" onClick={handleCreate}>
                         {busy ? "생성 중..." : "만들기"}
                     </button>
                 </div>

@@ -70,7 +70,7 @@ export default function CompareDiffView() {
                     onChange={onChange}
                     style={{ flex: 1 }}
                 />
-                <button className="btn btn-primary" type="submit" disabled={loading}>
+                <button className="btn btn-primary" type="submit">
                     {loading ? "비교 중..." : "Diff 보기"}
                 </button>
             </form>

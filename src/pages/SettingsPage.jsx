@@ -125,7 +125,6 @@ export default function SettingsPage() {
                                         onChange={(e) =>
                                             setPasswordForm({ ...passwordForm, currentPassword: e.target.value })
                                         }
-                                        disabled={passwordBusy}
                                     />
                                 </div>
 
@@ -140,7 +139,6 @@ export default function SettingsPage() {
                                         onChange={(e) =>
                                             setPasswordForm({ ...passwordForm, newPassword: e.target.value })
                                         }
-                                        disabled={passwordBusy}
                                     />
                                 </div>
 
@@ -155,14 +153,13 @@ export default function SettingsPage() {
                                         onChange={(e) =>
                                             setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })
                                         }
-                                        disabled={passwordBusy}
                                     />
                                 </div>
 
                                 {passwordError && <div className="auth-error">{passwordError}</div>}
                                 {passwordSuccess && <div className="auth-success">{passwordSuccess}</div>}
 
-                                <button className="btn btn-primary" type="submit" disabled={passwordBusy}>
+                                <button className="btn btn-primary" type="submit">
                                     {passwordBusy ? "변경 중..." : "비밀번호 변경"}
                                 </button>
                             </form>
@@ -189,7 +186,6 @@ export default function SettingsPage() {
                                             placeholder={user?.email}
                                             value={deleteConfirm}
                                             onChange={(e) => setDeleteConfirm(e.target.value)}
-                                            disabled={deleteBusy}
                                         />
                                     </div>
 
@@ -198,7 +194,6 @@ export default function SettingsPage() {
                                     <button
                                         className="btn btn-danger"
                                         type="submit"
-                                        disabled={deleteBusy || deleteConfirm !== user?.email}
                                     >
                                         {deleteBusy ? "탈퇴 처리 중..." : "회원 탈퇴"}
                                     </button>

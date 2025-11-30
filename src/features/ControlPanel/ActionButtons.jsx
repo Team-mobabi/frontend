@@ -291,24 +291,6 @@ export default function ActionButtons() {
     };
 
     const guard = (targetStep, fn) => {
-        if (!repoId) {
-            showGuideNotice("프로젝트 저장 공간을 먼저 선택해주세요.");
-            return;
-        }
-
-        // 예외: step 1에서 파일 담기(step 2) 허용 (가져오기 건너뛰기)
-        const allowSkipPull = step === 1 && targetStep === 2;
-        // 예외: Push 가능한 커밋이 있으면 올리기(step 4) 허용
-        const allowPush = targetStep === 4 && hasPushableCommits;
-
-        if (step !== targetStep && !allowSkipPull && !allowPush && !(needsInitialPush && targetStep === 2 && step === 1)) {
-            showGuideNotice(`먼저 "${STEP_LABEL[step]}" 단계를 진행해주세요!`);
-            return;
-        }
-        if (busy) {
-            showGuideNotice("다른 작업이 진행 중입니다. 잠시만 기다려 주세요.", "info");
-            return; // 작업 중이면 중복 실행 방지
-        }
         fn();
     };
 
@@ -408,7 +390,6 @@ export default function ActionButtons() {
     // '파일 담기' 확인 처리
     const handleAddConfirm = async (selection) => {
         setOpenAdd(false);
-        if (!selection || selection.length === 0) return; // 선택된 파일 없으면 종료
 
         setIsAddingFiles(true);
         setBusy(true);
@@ -489,11 +470,7 @@ export default function ActionButtons() {
     // '버전 저장'(Commit) 처리
     const handleCommit = async () => {
         setCommitModalOpen(false);
-        const text = msg.trim(); // 저장 메시지
-        if (!text) {
-            setToast("변경 내용을 설명하는 메시지를 입력해야 합니다.");
-            return;
-        }
+        const text = msg.trim() || "변경사항 저장"; // 저장 메시지 (없으면 기본값 사용)
         setBusy(true);
         dispatch({ type: "SET_ANIMATION_START", payload: "commit" }); // 애니메이션 시작 (가정)
 
@@ -713,9 +690,7 @@ export default function ActionButtons() {
     // '새 작업 버전 만들기' 처리
     const handleCreateBranch = async () => {
         setPullOpen(false);
-        const newBranchName = prompt(`현재 '${selBranch}' 버전에서 시작하는 새 작업 버전의 이름을 입력하세요:`)?.trim();
-        if (!newBranchName) return setToast("버전 이름이 올바르지 않습니다.");
-        if (newBranchName.includes(" ")) return setToast("버전 이름에는 공백을 포함할 수 없습니다."); // 간단한 유효성 검사 추가
+        const newBranchName = prompt(`현재 '${selBranch}' 버전에서 시작하는 새 작업 버전의 이름을 입력하세요:`)?.trim() || `branch-${Date.now()}`;
         setBusy(true);
         try {
             await api.branches.create(repoId, { name: newBranchName, from: selBranch });
@@ -964,25 +939,6 @@ export default function ActionButtons() {
         }
     }, [step, isInSuggestedWorkflow, isAddSuggested, isCommitSuggested, isPushSuggested, isPullSuggested]);
     
-    // 워크플로우 추천이 있을 때: 모든 단계를 활성화하되, 현재 단계만 강조
-    // 워크플로우 추천이 없을 때: 기존 로직 사용
-    const lock1 = isInSuggestedWorkflow 
-        ? (step !== 1 || busy)
-        : (step !== 1 || busy);
-    const lock2 = isInSuggestedWorkflow
-        ? (step !== 2 || busy)
-        : ((needsInitialPush && step === 1) ? true : (step !== 2 || busy));
-    const lock3 = isInSuggestedWorkflow
-        ? (step !== 3 || busy || state.stagingArea.length === 0)
-        : (step !== 3 || busy || state.stagingArea.length === 0);
-    // push 버튼 비활성화 조건 계산
-    // "만 저장" 워크플로우면 무조건 비활성화
-    const shouldDisablePush = isOnlySaveWorkflow || 
-                               (step !== 4) || 
-                               busy || 
-                               (!hasPushableCommits && !needsInitialPush);
-    
-    const lock4 = shouldDisablePush;
 
     // --- Render ---
     return (
@@ -1110,13 +1066,12 @@ export default function ActionButtons() {
                         </button>
                     ) : (
                         // '가져오기' 버튼 (버전 선택 포함)
-                        <div className={`btn-split-wrap${lock1 ? " locked" : ""}${isPullSuggested ? " ai-suggested" : ""}`} data-ai-suggested={isPullSuggested}>
+                        <div className={`btn-split-wrap${isPullSuggested ? " ai-suggested" : ""}`} data-ai-suggested={isPullSuggested}>
                             <button
                                 id="tutorial-pull-btn"
                                 className={`btn btn-split-action${isPullSuggested ? " ai-suggested" : ""}`}
                                 data-ai-suggested={isPullSuggested}
                                 onClick={() => guard(1, () => handlePull(selBranch))}
-                                disabled={lock1}
                                 title={isPullSuggested ? `🤖 AI 추천: '${selBranch}' 버전의 최신 내용을 서버에서 가져옵니다.` : `'${selBranch}' 버전의 최신 내용을 서버에서 가져옵니다.`}
                             >
                                 {isPullSuggested && "🤖 "}{selBranch} 에서 가져오기
@@ -1124,13 +1079,12 @@ export default function ActionButtons() {
                             <button
                                 className="btn btn-split-trigger"
                                 onClick={() => guard(1, () => setPullOpen(!pullOpen))}
-                                disabled={lock1}
                                 title="가져올 작업 버전 선택"
                             >
                                 ▼
                             </button>
                             {/* 버전 선택 메뉴 */}
-                            {pullOpen && !lock1 && (
+                            {pullOpen && (
                                 <div className="combo-menu">
                                     {branches.map((b) => (
                                         <div key={b} className="combo-item-wrap">
@@ -1168,7 +1122,7 @@ export default function ActionButtons() {
                     {/* '파일 담기' 버튼 */}
                     <button
                         id="tutorial-add-btn"
-                        className={`btn${lock2 ? " btn-locked" : ""}${isAddSuggested ? " ai-suggested" : ""}`}
+                        className={`btn${isAddSuggested ? " ai-suggested" : ""}`}
                         data-ai-suggested={isAddSuggested}
                         onClick={() => {
                             if (isInSuggestedWorkflow && step === 2) {
@@ -1178,7 +1132,6 @@ export default function ActionButtons() {
                                 guard(2, () => setOpenAdd(true));
                             }
                         }}
-                        disabled={lock2}
                         title={isAddSuggested ? "🤖 AI 추천: 변경된 파일 중 다음 버전에 포함할 파일을 선택합니다. 파일을 선택하면 자동으로 다음 단계로 진행됩니다." : "변경된 파일 중 다음 버전에 포함할 파일을 선택합니다."}
                     >
                         {isAddSuggested && "🤖 "}파일 담기
@@ -1187,23 +1140,21 @@ export default function ActionButtons() {
                     {/* '버전 저장' 버튼 */}
                     <button
                         id="tutorial-commit-btn"
-                        className={`btn btn-success${lock3 ? " btn-locked" : ""}${isCommitSuggested ? " ai-suggested" : ""}`}
+                        className={`btn btn-success${isCommitSuggested ? " ai-suggested" : ""}`}
                         data-ai-suggested={isCommitSuggested}
                         onClick={() => guard(3, () => setCommitModalOpen(true))}
-                        disabled={lock3}
                         title={isCommitSuggested ? "🤖 AI 추천: 담긴 파일들을 하나의 작업 단위로 저장합니다." : "담긴 파일들을 하나의 작업 단위로 저장합니다."}
                     >
                         {isCommitSuggested && "🤖 "}버전 저장
                     </button>
 
                     {/* '서버에 올리기' 버튼 (버전 선택 포함) */}
-                    <div className={`btn-split-wrap primary${lock4 ? " locked" : ""}${isPushSuggested ? " ai-suggested" : ""}`} data-ai-suggested={isPushSuggested}>
+                    <div className={`btn-split-wrap primary${isPushSuggested ? " ai-suggested" : ""}`} data-ai-suggested={isPushSuggested}>
                         <button
                             id="tutorial-push-btn"
                             className={`btn btn-primary btn-split-action${isPushSuggested ? " ai-suggested" : ""}`}
                             data-ai-suggested={isPushSuggested}
                             onClick={() => guard(4, () => handlePush(selBranch))}
-                            disabled={lock4}
                             title={isPushSuggested ? `🤖 AI 추천: '${selBranch}' 버전의 저장된 내용을 서버에 올립니다.` : `'${selBranch}' 버전의 저장된 내용을 서버에 올립니다.`}
                         >
                             {isPushSuggested && "🤖 "}{selBranch} 으로 올리기
@@ -1211,13 +1162,12 @@ export default function ActionButtons() {
                         <button
                             className="btn btn-primary btn-split-trigger"
                             onClick={() => guard(4, () => setPushOpen(!pushOpen))}
-                            disabled={lock4}
                             title="올릴 작업 버전 선택"
                         >
                             ▼
                         </button>
                         {/* 버전 선택 메뉴 */}
-                        {pushOpen && !lock4 && (
+                        {pushOpen && (
                             <div className="combo-menu">
                                 {branches.map((b) => (
                                     <button
@@ -1248,7 +1198,6 @@ export default function ActionButtons() {
                         <button
                             className="btn btn-ghost"
                             onClick={() => setShowChangesPanel((prev) => !prev)}
-                            disabled={!repoId}
                         >
                             {showChangesPanel ? "변경 사항 닫기" : "변경 사항 미리보기"}
                         </button>

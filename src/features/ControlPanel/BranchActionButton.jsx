@@ -6,7 +6,6 @@ export default function BranchActionButton({
                                                onSelect,
                                                onAction,
                                                suffix,
-                                               disabled,
                                                primary
                                            }) {
     const [open, setOpen] = useState(false);
@@ -32,7 +31,7 @@ export default function BranchActionButton({
 
     return (
         <div className="combo-wrap" ref={boxRef}>
-            <button className={actionCls} disabled={disabled} onClick={() => onAction?.(value)}>
+            <button className={actionCls} onClick={() => onAction?.(value)}>
         <span className="branch-pill" onClick={toggleMenu} aria-haspopup="listbox" aria-expanded={open}>
           <span className="branch-pill-label">{value}</span>
           <span className="branch-caret">▾</span>
