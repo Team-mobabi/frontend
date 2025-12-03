@@ -247,7 +247,15 @@ export const api = {
             return { saved };
         },
         충돌: (id) => request("GET", `/repos/${id}/conflicts`),
-        충돌해결제안: (id, filePath) => request("POST", `/repos/${id}/conflicts/ai-suggest`, { filePath }),
+        충돌해결제안: (id, filePath) => {
+            // AI 호출은 시간이 오래 걸리므로 타임아웃을 180초로 설정 (큰 파일의 경우 더 오래 걸릴 수 있음)
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 180000);
+
+            return request("POST", `/repos/${id}/conflicts/ai-suggest`, { filePath }, {
+                signal: controller.signal
+            }).finally(() => clearTimeout(timeoutId));
+        },
         충돌해결: (id, resolution) => request("POST", `/repos/${id}/conflicts/resolve`, resolution),
         파일다운로드: (id, params) => request("GET", `/repos/${id}/files/download${qs(params)}`, null, { responseType: "blob" }),
         저장소다운로드: (id, params) => request("GET", `/repos/${id}/download${qs(params)}`, null, { responseType: "blob" }),
