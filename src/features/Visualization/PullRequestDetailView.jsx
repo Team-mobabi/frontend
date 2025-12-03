@@ -15,6 +15,7 @@ export default function PullRequestDetailView() {
     const [reviews, setReviews] = useState([])
     const [newReviewText, setNewReviewText] = useState('')
     const [isSubmitting, setIsSubmitting] = useState(false)
+    const [expandedFiles, setExpandedFiles] = useState(new Set()) // diff 파일 접기/펼치기 상태
 
     const fetchData = useCallback(() => {
         if (!selectedRepoId || !selectedPrId) return
@@ -22,9 +23,9 @@ export default function PullRequestDetailView() {
         setLoading(true)
         setError(null)
         Promise.all([
-            api.변경요청.get(selectedRepoId, selectedPrId),
-            api.변경요청.diff(selectedRepoId, selectedPrId),
-            api.변경요청.listReviews(selectedRepoId, selectedPrId)
+            api.변경요청.조회(selectedRepoId, selectedPrId),
+            api.변경요청.비교(selectedRepoId, selectedPrId),
+            api.변경요청.리뷰목록(selectedRepoId, selectedPrId)
         ]).then(([detailsData, diffData, reviewsData]) => {
             setDetails(detailsData)
             // diff 응답 정규화: 문자열 또는 파일 배열 모두 처리
@@ -49,7 +50,18 @@ export default function PullRequestDetailView() {
             } catch {
                 setDiffFiles([]);
             }
-            setReviews(reviewsData.reviews || reviewsData || [])
+            // 리뷰 데이터 정규화: 다양한 응답 구조 지원
+            let normalizedReviews = [];
+            if (Array.isArray(reviewsData)) {
+                normalizedReviews = reviewsData;
+            } else if (reviewsData && Array.isArray(reviewsData.reviews)) {
+                normalizedReviews = reviewsData.reviews;
+            } else if (reviewsData && reviewsData.data && Array.isArray(reviewsData.data)) {
+                normalizedReviews = reviewsData.data;
+            } else if (reviewsData && reviewsData.items && Array.isArray(reviewsData.items)) {
+                normalizedReviews = reviewsData.items;
+            }
+            setReviews(normalizedReviews)
         }).catch(e => {
             setError(e.message || '변경 요청 정보를 불러오는 데 실패했습니다.')
         }).finally(() => {
@@ -77,6 +89,18 @@ export default function PullRequestDetailView() {
 
     const isPrMerged = useMemo(() => normalizedPrState === 'MERGED', [normalizedPrState]);
 
+    const toggleFileExpanded = (fileId) => {
+        setExpandedFiles(prev => {
+            const next = new Set(prev);
+            if (next.has(fileId)) {
+                next.delete(fileId);
+            } else {
+                next.add(fileId);
+            }
+            return next;
+        });
+    };
+
     const handleSubmitReview = async (status) => {
         const comment = newReviewText.trim();
         if (status === 'COMMENTED' && !comment) {
@@ -86,7 +110,7 @@ export default function PullRequestDetailView() {
 
         setIsSubmitting(true)
         try {
-            await api.변경요청.createReview(selectedRepoId, selectedPrId, {
+            await api.변경요청.리뷰생성(selectedRepoId, selectedPrId, {
                 comment: comment || (status === 'APPROVED' ? '승인합니다.' : '리뷰를 남깁니다.'),
                 status: status
             })
@@ -127,7 +151,7 @@ export default function PullRequestDetailView() {
         if (!window.confirm(`변경 요청 #${details.id}를 닫으시겠습니까?\n합쳐지지 않은 변경사항은 사라집니다.`)) return;
         setIsSubmitting(true);
         try {
-            await api.변경요청.close(selectedRepoId, selectedPrId);
+            await api.변경요청.닫기(selectedRepoId, selectedPrId);
             dispatch({ type: 'GRAPH_DIRTY' });
             dispatch({ type: 'SET_VIEW', payload: 'prs' });
         } catch (e) {
@@ -213,37 +237,64 @@ export default function PullRequestDetailView() {
                     <h3 className="pr-section-title">변경 사항 (Diff)</h3>
                     {diffFiles.length > 0 ? (
                         <div className="pr-diff-file-list" style={{ display: 'grid', gap: 12 }}>
-                            {diffFiles.map(file => (
-                                <div key={file.id || file.path} className="pr-diff-file">
-                                    <div className="pr-diff-file-header" style={{
-                                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                                        background: 'var(--panel-2)', border: '1px solid var(--line)', borderBottom: 'none',
-                                        padding: '8px 12px', borderTopLeftRadius: 8, borderTopRightRadius: 8
-                                    }}>
-                                        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                                            <span className="file-path" style={{ fontFamily: 'var(--font-mono)' }}>{file.path}</span>
-                                            {file.status && (
-                                                <span className="file-status" style={{ textTransform: 'uppercase', fontSize: 12, color: 'var(--sub)' }}>
-                                                    {file.status}
+                            {diffFiles.map(file => {
+                                const fileId = file.id || file.path;
+                                const isExpanded = expandedFiles.has(fileId);
+                                return (
+                                    <div key={fileId} className="pr-diff-file">
+                                        <div 
+                                            className="pr-diff-file-header" 
+                                            style={{
+                                                display: 'flex', 
+                                                alignItems: 'center', 
+                                                justifyContent: 'space-between',
+                                                background: 'var(--panel-2)', 
+                                                border: '1px solid var(--line)', 
+                                                borderBottom: isExpanded ? 'none' : '1px solid var(--line)',
+                                                padding: '8px 12px', 
+                                                borderTopLeftRadius: 8, 
+                                                borderTopRightRadius: 8,
+                                                borderBottomLeftRadius: isExpanded ? 0 : 8,
+                                                borderBottomRightRadius: isExpanded ? 0 : 8,
+                                                cursor: 'pointer',
+                                                userSelect: 'none'
+                                            }}
+                                            onClick={() => toggleFileExpanded(fileId)}
+                                        >
+                                            <div style={{ display: 'flex', gap: 8, alignItems: 'center', flex: 1 }}>
+                                                <span style={{ fontSize: '14px', color: 'var(--sub)' }}>
+                                                    {isExpanded ? '▼' : '▶'}
                                                 </span>
-                                            )}
-                                        </div>
-                                        {(file.additions || file.deletions) ? (
-                                            <div className="file-stats" style={{ fontSize: 12, color: 'var(--sub)' }}>
-                                                +{file.additions || 0} −{file.deletions || 0}
+                                                <span className="file-path" style={{ fontFamily: 'var(--font-mono)' }}>{file.path}</span>
+                                                {file.status && (
+                                                    <span className="file-status" style={{ textTransform: 'uppercase', fontSize: 12, color: 'var(--sub)' }}>
+                                                        {file.status}
+                                                    </span>
+                                                )}
                                             </div>
-                                        ) : null}
+                                            {(file.additions || file.deletions) ? (
+                                                <div className="file-stats" style={{ fontSize: 12, color: 'var(--sub)' }}>
+                                                    +{file.additions || 0} −{file.deletions || 0}
+                                                </div>
+                                            ) : null}
+                                        </div>
+                                        {isExpanded && (
+                                            <pre className="pr-diff" style={{
+                                                margin: 0, 
+                                                border: '1px solid var(--line)', 
+                                                borderTop: 'none',
+                                                borderBottomLeftRadius: 8, 
+                                                borderBottomRightRadius: 8, 
+                                                overflowX: 'auto',
+                                                padding: '8px 12px', 
+                                                background: 'var(--panel-bg)'
+                                            }}>
+                                                {renderDiffPatch(file.patch)}
+                                            </pre>
+                                        )}
                                     </div>
-                                    {/* [수정됨] Diff 렌더링을 헬퍼 함수로 대체 */}
-                                    <pre className="pr-diff" style={{
-                                        margin: 0, border: '1px solid var(--line)', borderTop: 'none',
-                                        borderBottomLeftRadius: 8, borderBottomRightRadius: 8, overflowX: 'auto',
-                                        padding: '8px 12px', background: 'var(--panel-bg)'
-                                    }}>
-                                        {renderDiffPatch(file.patch)}
-                                    </pre>
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
                     ) : (
                         // [수정됨] 폴백 Diff 렌더링
@@ -255,18 +306,28 @@ export default function PullRequestDetailView() {
                     <h3 className="pr-section-title">리뷰 ({reviews.length})</h3>
                     <div className="review-list">
                         {reviews.length === 0 && <div className="empty">아직 리뷰가 없습니다.</div>}
-                        {reviews.map(review => (
-                            <div key={review.id} className="review-item">
-                                <strong className="review-author">{getUserDisplayName(review.author)}</strong>
-                                <p className="review-comment">{review.comment}</p>
-                                <span className={`review-status ${review.status?.toLowerCase()}`}>
-                                    {review.status}
-                                </span>
-                            </div>
-                        ))}
+                        {reviews.map(review => {
+                            // 리뷰 댓글 필드 정규화: 다양한 필드명 지원
+                            const reviewComment = review.comment || review.body || review.message || review.text || review.content || '';
+                            const reviewStatus = review.status || review.state || '';
+                            
+                            return (
+                                <div key={review.id || review._id || Math.random()} className="review-item">
+                                    <strong className="review-author">{getUserDisplayName(review.author)}</strong>
+                                    {reviewComment && (
+                                        <p className="review-comment">{reviewComment}</p>
+                                    )}
+                                    {reviewStatus && (
+                                        <span className={`review-status ${reviewStatus.toLowerCase()}`}>
+                                            {reviewStatus}
+                                        </span>
+                                    )}
+                                </div>
+                            );
+                        })}
                     </div>
 
-                    {/* 리뷰 작성 섹션: 승인/댓글 작성 */}
+                    {/* 리뷰 작성 섹션: 승인/댓글 작성 (열린 PR에서만 작성 가능) */}
                     {isPrOpen && (
                         <div className="review-form">
                             <textarea

@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { api } from "../../features/API";
 
 const INITIAL_MESSAGES = [
     {
@@ -7,67 +8,12 @@ const INITIAL_MESSAGES = [
     },
 ];
 
-function buildAssistantReply(rawInput) {
-    const input = rawInput.toLowerCase();
-    const responses = [
-        {
-            keywords: ["commit", "커밋"],
-            message: "커밋을 만들려면 변경한 파일을 먼저 Stage한 다음 메시지를 작성해 저장하세요. 저장 후에는 그래프 탭에서 커밋 노드를 눌러 브랜치 상태를 확인할 수 있어요.",
-        },
-        {
-            keywords: ["push", "푸시"],
-            message: "푸시하기 전에 원격과 동기화 되었는지 확인해 주세요. 작업 버튼 영역의 ‘올리기’ 단계를 통해 원격 저장소로 안전하게 전송할 수 있습니다.",
-        },
-        {
-            keywords: ["pull", "가져오기"],
-            message: "서버에서 최신 내용을 가져오려면 ‘가져오기’ 단계를 실행하세요. 충돌이 나면 자동으로 충돌 해결 모달이 표시됩니다.",
-        },
-        {
-            keywords: ["branch", "브랜치"],
-            message: "브랜치를 생성하거나 전환하려면 브랜치 패널에서 새 브랜치를 만들거나 선택하세요. 그래프 탭에서는 각 브랜치의 병합 상태를 시각적으로 확인 가능합니다.",
-        },
-        {
-            keywords: ["merge", "병합"],
-            message: "병합은 그래프 화면에서 브랜치 라벨을 클릭해 시작할 수 있어요. 충돌이 발생하면 제공되는 가이드에 따라 해결한 뒤 다시 병합을 시도하세요.",
-        },
-        {
-            keywords: ["fork", "포크"],
-            message: "공개 레포 목록에서 '내 저장소로 가져오기' 버튼을 누르면 복제본이 내 계정에 생성됩니다. 이후 '저장소 복제' 기능으로 작업공간에 다운로드할 수 있습니다.",
-        },
-        {
-            keywords: ["download", "다운로드", "zip"],
-            message: "저장소를 다운로드하면 .git 폴더는 제외된 ZIP 파일로 제공돼요. 레포지토리 화면의 ‘⬇️ 저장소 다운로드’ 버튼을 사용해 보세요.",
-        },
-        {
-            keywords: ["conflict", "충돌"],
-            message: "충돌 경고가 뜨면 충돌 해결 모달에서 파일별로 AI 제안과 수동 편집을 활용해 주세요. 해결 후에는 다시 커밋하거나 병합을 진행할 수 있습니다.",
-        },
-        {
-            keywords: ["pull request", "pr", "리뷰"],
-            message: "Pull Request는 ‘Pull Requests’ 탭에서 생성할 수 있습니다. 비교할 브랜치를 선택한 후 설명을 적고 생성하면, 목록에서 리뷰와 병합을 진행할 수 있어요.",
-        },
-    ];
-
-    const matched = responses.find(({ keywords }) =>
-        keywords.some((keyword) => input.includes(keyword)),
-    );
-
-    if (matched) {
-        return matched.message;
-    }
-
-    if (input.length < 5) {
-        return "조금 더 자세히 어떤 작업을 하시는지 설명해 주실 수 있을까요? 예: “브랜치를 병합하고 싶은데 충돌이 나요.”";
-    }
-
-    return "상황을 좀 더 구체적으로 알려주시면 단계별로 도와드릴게요! 예를 들어 “새 브랜치를 만들고 푸시하는 방법 알려줘”처럼 물어보면 더 정확한 안내가 가능합니다.";
-}
-
-export default function AIChatAssistantModal({ open, onClose }) {
+export default function AIChatAssistantModal({ open, onClose, repoId }) {
     const [messages, setMessages] = useState(INITIAL_MESSAGES);
     const [input, setInput] = useState("");
     const [busy, setBusy] = useState(false);
     const messagesRef = useRef(null);
+    const inputRef = useRef(null);
 
     useEffect(() => {
         if (open) {
@@ -83,31 +29,69 @@ export default function AIChatAssistantModal({ open, onClose }) {
     }, [messages, open]);
 
     const placeholder = useMemo(
-        () => "예: \"브랜치를 새로 만든 뒤 원격에 올리는 방법 알려줘\"",
+        () => "예: \"브랜치가 뭔가요?\" 또는 \"지금 무엇을 해야 하나요?\"",
         [],
     );
 
-    const handleSend = () => {
-        const trimmed = input.trim() || "";
-        if (busy) return;
+    const handleSend = async (text = null) => {
+        const trimmed = (text !== null ? text : input.trim()) || "";
+        if (busy || !trimmed || !repoId) return;
 
         const userMessage = { role: "user", content: trimmed };
         setMessages((prev) => [...prev, userMessage]);
+        // 입력창을 즉시 비우기 위해 ref를 통해 직접 설정
+        if (inputRef.current) {
+            inputRef.current.value = "";
+        }
         setInput("");
         setBusy(true);
 
-        window.setTimeout(() => {
-            const replyContent = buildAssistantReply(trimmed);
-            const assistantMessage = { role: "assistant", content: replyContent };
+        try {
+            const response = await api.aiAssistant.ask(repoId, trimmed);
+            
+            // 응답 검증 및 안전한 처리
+            const answer = (response && response.answer && typeof response.answer === 'string') 
+                ? response.answer 
+                : "답변을 생성하는 중 오류가 발생했습니다.";
+            const suggestedActions = Array.isArray(response?.suggestedActions) 
+                ? response.suggestedActions 
+                : [];
+            const relatedConcepts = Array.isArray(response?.relatedConcepts) 
+                ? response.relatedConcepts 
+                : [];
+            
+            const assistantMessage = { 
+                role: "assistant", 
+                content: answer,
+                suggestedActions: suggestedActions,
+                relatedConcepts: relatedConcepts
+            };
             setMessages((prev) => [...prev, assistantMessage]);
+        } catch (error) {
+            console.error("[AIChatAssistantModal] API 호출 실패:", error);
+            const errorMessage = { 
+                role: "assistant", 
+                content: `죄송합니다. 오류가 발생했습니다: ${error?.message || "알 수 없는 오류"}` 
+            };
+            setMessages((prev) => [...prev, errorMessage]);
+        } finally {
             setBusy(false);
-        }, 220);
+        }
     };
 
     const handleKeyDown = (event) => {
         if (event.key === "Enter" && !event.shiftKey) {
             event.preventDefault();
-            handleSend();
+            event.stopPropagation();
+            if (!busy && input.trim()) {
+                const textToSend = input.trim();
+                // 입력창을 즉시 비우기 위해 ref를 통해 직접 설정
+                if (inputRef.current) {
+                    inputRef.current.value = "";
+                }
+                setInput("");
+                handleSend(textToSend);
+            }
         }
     };
 
@@ -122,17 +106,140 @@ export default function AIChatAssistantModal({ open, onClose }) {
                 </div>
                 <div className="modal-body" style={{ display: "grid", gap: 12 }}>
                     <div className="ai-chat-messages" ref={messagesRef}>
-                        {messages.map((message, index) => (
+                        {messages.filter(msg => msg && msg.role).map((message, index) => (
                             <div
                                 key={`${message.role}-${index}`}
                                 className={`ai-chat-message ${message.role === "user" ? "from-user" : "from-assistant"}`}
+                                style={{
+                                    display: "flex",
+                                    flexDirection: "column",
+                                    width: "100%",
+                                    maxWidth: "100%"
+                                }}
                             >
-                                {message.content}
+                                <div style={{ 
+                                    whiteSpace: "pre-wrap", 
+                                    wordBreak: "break-word",
+                                    wordWrap: "break-word",
+                                    lineHeight: "1.6",
+                                    width: "100%",
+                                    overflowWrap: "break-word"
+                                }}>
+                                    {message.content || ""}
+                                </div>
+                                {message.role === "assistant" && (
+                                    <>
+                                        {message.suggestedActions && Array.isArray(message.suggestedActions) && message.suggestedActions.length > 0 && (
+                                            <div style={{ 
+                                                marginTop: "16px", 
+                                                paddingTop: "16px", 
+                                                borderTop: "1px solid rgba(0,0,0,0.1)",
+                                                width: "100%"
+                                            }}>
+                                                <div style={{ 
+                                                    fontSize: "13px", 
+                                                    fontWeight: "600",
+                                                    marginBottom: "10px",
+                                                    color: "var(--text, #333)"
+                                                }}>
+                                                    💡 추천 작업
+                                                </div>
+                                                <div style={{ 
+                                                    display: "flex", 
+                                                    flexDirection: "column",
+                                                    gap: "8px",
+                                                    width: "100%"
+                                                }}>
+                                                    {message.suggestedActions.filter(action => action).map((action, idx) => {
+                                                        const actionText = typeof action === 'string' ? action : String(action);
+                                                        return (
+                                                            <div 
+                                                                key={idx}
+                                                                style={{
+                                                                    background: "rgba(59, 130, 246, 0.15)",
+                                                                    border: "1px solid rgba(59, 130, 246, 0.3)",
+                                                                    padding: "10px 12px",
+                                                                    borderRadius: "6px",
+                                                                    fontSize: "13px",
+                                                                    color: "var(--text, #333)",
+                                                                    transition: "all 0.2s",
+                                                                    cursor: busy ? "not-allowed" : "pointer",
+                                                                    opacity: busy ? 0.6 : 1
+                                                                }}
+                                                                onClick={() => {
+                                                                    if (!busy && actionText) {
+                                                                        handleSend(actionText);
+                                                                    }
+                                                                }}
+                                                                onMouseEnter={(e) => {
+                                                                    if (!busy) {
+                                                                        e.currentTarget.style.background = "rgba(59, 130, 246, 0.25)";
+                                                                        e.currentTarget.style.borderColor = "rgba(59, 130, 246, 0.5)";
+                                                                        e.currentTarget.style.transform = "translateY(-1px)";
+                                                                    }
+                                                                }}
+                                                                onMouseLeave={(e) => {
+                                                                    e.currentTarget.style.background = "rgba(59, 130, 246, 0.15)";
+                                                                    e.currentTarget.style.borderColor = "rgba(59, 130, 246, 0.3)";
+                                                                    e.currentTarget.style.transform = "translateY(0)";
+                                                                }}
+                                                            >
+                                                                {idx + 1}. {actionText}
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </div>
+                                        )}
+                                        {message.relatedConcepts && Array.isArray(message.relatedConcepts) && message.relatedConcepts.length > 0 && (
+                                            <div style={{ 
+                                                marginTop: "16px",
+                                                paddingTop: "16px",
+                                                borderTop: message.suggestedActions && Array.isArray(message.suggestedActions) && message.suggestedActions.length > 0 
+                                                    ? "1px solid rgba(0,0,0,0.1)" 
+                                                    : "none",
+                                                width: "100%"
+                                            }}>
+                                                <div style={{ 
+                                                    fontSize: "12px", 
+                                                    fontWeight: "500",
+                                                    marginBottom: "8px",
+                                                    color: "var(--text, #333)"
+                                                }}>
+                                                    📚 관련 개념
+                                                </div>
+                                                <div style={{ 
+                                                    display: "flex", 
+                                                    flexWrap: "wrap", 
+                                                    gap: "6px",
+                                                    width: "100%"
+                                                }}>
+                                                    {message.relatedConcepts.filter(concept => concept).map((concept, idx) => (
+                                                        <span 
+                                                            key={idx}
+                                                            style={{
+                                                                background: "rgba(0,0,0,0.05)",
+                                                                border: "1px solid rgba(0,0,0,0.1)",
+                                                                padding: "6px 10px",
+                                                                borderRadius: "4px",
+                                                                fontSize: "12px",
+                                                                color: "var(--text, #333)"
+                                                            }}
+                                                            >
+                                                            {typeof concept === 'string' ? concept : String(concept)}
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </>
+                                )}
                             </div>
                         ))}
                     </div>
                     <div className="ai-chat-input-area">
                         <textarea
+                            ref={inputRef}
                             value={input}
                             onChange={(event) => setInput(event.target.value)}
                             onKeyDown={handleKeyDown}

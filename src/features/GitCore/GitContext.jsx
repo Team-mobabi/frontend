@@ -33,7 +33,7 @@ function reducer(state, action) {
             return { ...state, repositories: action.payload };
         case "SELECT_REPO":
             if (action.payload) try { localStorage.setItem(LS_KEY, String(action.payload)); } catch {}
-            // 레포 변경 시 PR 관련 상태 초기화
+            // 저장소 변경 시 PR 관련 상태 초기화
             return {
                 ...state,
                 selectedRepoId: action.payload,

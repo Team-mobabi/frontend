@@ -149,7 +149,7 @@ export default function HomePage(){
                                 className={`tab-btn ${state.currentView === "prs" ? "active" : ""}`}
                                 onClick={() => dispatch({ type: "SET_VIEW", payload: "prs" })}
                             >
-                                Pull Requests
+                                협업하기
                                 {state.prList.length > 0 && <span className="tab-badge">{state.prList.length}</span>}
                             </button>
                         </div>

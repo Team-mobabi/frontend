@@ -20,6 +20,11 @@ const STEP_GUIDE = {
     4: "준비된 저장을 선택한 가지로 업로드합니다. 필요하다면 변경 사항을 다시 확인해 주세요.",
 };
 
+// 파일 업로드 관련 상수
+const UPLOAD_BATCH_SIZE = 40; // 한 번에 업로드할 파일 개수
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 개별 파일 최대 크기: 10MB
+const MAX_TOTAL_SIZE = 50 * 1024 * 1024; // 전체 파일 최대 크기: 50MB
+
 // 워크플로우 단계 아이콘 및 설명
 const STEP_ICONS = {
     "pull": "⬇️",
@@ -394,9 +399,84 @@ export default function ActionButtons() {
         setIsAddingFiles(true);
         setBusy(true);
         try {
-            // 파일을 서버에 업로드 (필요하다면)
-            const uploadResult = await api.저장소.업로드(repoId, selection);
-            const uploadedFileNames = Array.isArray(uploadResult?.saved) ? uploadResult.saved : [];
+            // 파일 크기 검증
+            const largeFiles = [];
+            let totalSize = 0;
+            
+            for (const file of selection) {
+                if (file.size > MAX_FILE_SIZE) {
+                    largeFiles.push({
+                        name: file.webkitRelativePath || file.name,
+                        size: (file.size / (1024 * 1024)).toFixed(2) + " MB"
+                    });
+                }
+                totalSize += file.size;
+            }
+            
+            if (largeFiles.length > 0) {
+                const fileList = largeFiles.map(f => `- ${f.name} (${f.size})`).join('\n');
+                if (!window.confirm(
+                    `⚠️ 큰 파일이 감지되었습니다.\n\n` +
+                    `다음 파일들이 개별 파일 크기 제한(${(MAX_FILE_SIZE / (1024 * 1024)).toFixed(0)}MB)을 초과합니다:\n\n` +
+                    `${fileList}\n\n` +
+                    `이 파일들은 업로드에서 제외됩니다. 계속하시겠습니까?`
+                )) {
+                    setBusy(false);
+                    setIsAddingFiles(false);
+                    return;
+                }
+                // 큰 파일 제외
+                selection = selection.filter(file => file.size <= MAX_FILE_SIZE);
+            }
+            
+            if (totalSize > MAX_TOTAL_SIZE) {
+                if (!window.confirm(
+                    `⚠️ 전체 파일 크기가 ${(MAX_TOTAL_SIZE / (1024 * 1024)).toFixed(0)}MB를 초과합니다.\n\n` +
+                    `현재 총 크기: ${(totalSize / (1024 * 1024)).toFixed(2)}MB\n\n` +
+                    `파일을 여러 번에 나누어 업로드합니다. 계속하시겠습니까?`
+                )) {
+                    setBusy(false);
+                    setIsAddingFiles(false);
+                    return;
+                }
+            }
+            
+            // 파일을 배치로 나누어 업로드
+            const uploadedFileNames = [];
+            const totalFiles = selection.length;
+            
+            for (let i = 0; i < selection.length; i += UPLOAD_BATCH_SIZE) {
+                const batch = selection.slice(i, i + UPLOAD_BATCH_SIZE);
+                const batchNum = Math.floor(i / UPLOAD_BATCH_SIZE) + 1;
+                const totalBatches = Math.ceil(totalFiles / UPLOAD_BATCH_SIZE);
+                
+                try {
+                    setToast(`파일 업로드 중... (${Math.min(i + UPLOAD_BATCH_SIZE, totalFiles)}/${totalFiles})`);
+                    const uploadResult = await api.저장소.업로드(repoId, batch);
+                    const saved = Array.isArray(uploadResult?.saved) ? uploadResult.saved : [];
+                    uploadedFileNames.push(...saved);
+                } catch (e) {
+                    // 413 에러인 경우 더 작은 배치로 재시도
+                    if (e?.status === 413) {
+                        setToast(`파일이 너무 커서 더 작은 단위로 나누어 업로드합니다...`);
+                        // 배치를 반으로 나누어 재시도
+                        const halfBatch = Math.ceil(batch.length / 2);
+                        for (let j = 0; j < batch.length; j += halfBatch) {
+                            const smallerBatch = batch.slice(j, j + halfBatch);
+                            try {
+                                const uploadResult = await api.저장소.업로드(repoId, smallerBatch);
+                                const saved = Array.isArray(uploadResult?.saved) ? uploadResult.saved : [];
+                                uploadedFileNames.push(...saved);
+                            } catch (retryErr) {
+                                console.error(`[handleAddConfirm] 작은 배치 업로드 실패:`, retryErr);
+                                throw new Error(`파일 업로드 실패: ${smallerBatch.map(f => f.name || f.webkitRelativePath).join(', ')}`);
+                            }
+                        }
+                    } else {
+                        throw e;
+                    }
+                }
+            }
 
             // '담기'(git add) 실행
             if (uploadedFileNames.length > 0) {
@@ -413,6 +493,8 @@ export default function ActionButtons() {
                 dispatch({ type: "SET_STAGING_AREA", payload: stagedFileNames }); // 서버 상태로 동기화
                 dispatch({ type: "SET_ANIMATION_START", payload: "add" }); // 애니메이션 시작
                 dispatch({ type: "GRAPH_DIRTY" }); // 상태 변경 알림 - StagedDiffView가 업데이트되도록
+                
+                setToast(`${uploadedFileNames.length}개 파일이 성공적으로 담겼습니다.`);
                 
                 // 워크플로우 추천이 있으면 다음 단계로 이동
                 if (suggestedWorkflowSteps.length > 0) {
@@ -457,9 +539,15 @@ export default function ActionButtons() {
                 }
             }
         } catch (e) {
-            fail(e, "파일을 담는 데 실패했어요.");
+            console.error("[handleAddConfirm] 파일 업로드 실패:", e);
+            if (e?.status === 413) {
+                fail(e, "파일 크기가 너무 큽니다. 더 작은 파일들을 선택하거나 서버 설정을 확인해주세요.");
+            } else {
+                fail(e, "파일을 담는 데 실패했어요.");
+            }
         } finally {
             setBusy(false);
+            setToast(""); // 토스트 메시지 초기화
             // 파일 담기 완료 후 약간의 지연을 두고 플래그 해제
             setTimeout(() => {
                 setIsAddingFiles(false);
@@ -1224,7 +1312,7 @@ export default function ActionButtons() {
                             {showGuide ? "단계 안내 숨기기" : "단계 안내 보기"}
                         </button>
                     </div>
-                    <span className="process-toolbar-hint">커밋이나 PR 전에 변경 내용을 확인해 보세요.</span>
+                    <span className="process-toolbar-hint">커밋이나 협업하기 전에 변경 내용을 확인해 보세요.</span>
                 </div>
 
                 {showChangesPanel && (
@@ -1290,6 +1378,7 @@ export default function ActionButtons() {
             <AIChatAssistantModal // AI 챗봇 모달
                 open={showAIChatModal}
                 onClose={() => setShowAIChatModal(false)}
+                repoId={repoId}
             />
 
             {/* 버튼 툴팁 */}

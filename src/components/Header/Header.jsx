@@ -80,8 +80,8 @@ export default function Header() {
             <div className="app-title">Mobabi</div>
             <div className="app-spacer" />
 
-            <button className="btn btn-ghost" onClick={() => nav("/public-repos")} title="공개 레포 탐색">
-                🌍 공개 레포 탐색
+            <button className="btn btn-ghost" onClick={() => nav("/public-repos")} title="공개 저장소 탐색">
+                🌍 공개 저장소 탐색
             </button>
 
             <button className="btn btn-ghost" onClick={() => setModalOpen(true)} title="사용자 검색">

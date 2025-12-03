@@ -308,7 +308,7 @@ export default function PublicRepoDetailPage() {
 
     useEffect(() => {
         if (!repoId) {
-            setError("레포지토리 ID가 제공되지 않았습니다.");
+            setError("저장소 ID가 제공되지 않았습니다.");
             setLoading(false);
             return;
         }
@@ -356,11 +356,11 @@ export default function PublicRepoDetailPage() {
                 if (fallbackRepo) {
                     setRepoInfo(fallbackRepo);
                 } else {
-                    setError("해당 레포지토리를 찾을 수 없습니다.");
+                    setError("해당 저장소를 찾을 수 없습니다.");
                 }
             } catch (err) {
                 if (!cancelled) {
-                    setError(err.message || "레포지토리 정보를 불러오지 못했습니다.");
+                    setError(err.message || "저장소 정보를 불러오지 못했습니다.");
                 }
             } finally {
                 if (!cancelled) {
@@ -375,7 +375,7 @@ export default function PublicRepoDetailPage() {
         };
     }, [repoId, locationRepo]);
 
-    const repoDisplayName = useMemo(() => repoInfo?.name || "레포지토리", [repoInfo]);
+    const repoDisplayName = useMemo(() => repoInfo?.name || "저장소", [repoInfo]);
     const ownerName = useMemo(() => {
         const owner = repoInfo?.owner;
         if (!owner) return "";
@@ -434,7 +434,7 @@ export default function PublicRepoDetailPage() {
 
                 {loading && (
                     <div className="panel">
-                        <span className="spinner" /> 레포지토리 정보를 불러오는 중입니다...
+                        <span className="spinner" /> 저장소 정보를 불러오는 중입니다...
                     </div>
                 )}
 

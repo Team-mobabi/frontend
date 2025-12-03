@@ -315,8 +315,8 @@ function calcBranchLabels(positions, branchHeads) {
     // positions에서도 브랜치 이름 가져오기
     const positionBranches = [...new Set(Object.values(positions).map((p) => p.branch))];
 
-    // 합쳐서 중복 제거
-    const branchNames = [...new Set([...allBranchNames, ...positionBranches])];
+    // 합쳐서 중복 제거하고 정렬하여 일관된 순서 보장
+    const branchNames = [...new Set([...allBranchNames, ...positionBranches])].sort();
 
     // main의 HEAD 커밋 해시 저장
     const mainHeadHash = branchHeads?.main;
@@ -330,50 +330,81 @@ function calcBranchLabels(positions, branchHeads) {
         }
     }
 
-    // 나머지 브랜치 처리
+    // 나머지 브랜치 처리 (정렬된 순서로 처리)
     branchNames.filter(b => b !== 'main').forEach((branchName) => {
         const color = colors[colorIndex % colors.length];
         branchColorMap[branchName] = color;
         colorIndex++;
 
-        // 이 브랜치가 main과 같은 커밋을 가리키는지 확인
         const branchHeadHash = branchHeads?.[branchName];
+        
+        // 이 브랜치가 main과 같은 커밋을 가리키는지 확인
         if (mainHeadHash && branchHeadHash &&
             (mainHeadHash === branchHeadHash || mainHeadHash.startsWith(branchHeadHash) || branchHeadHash.startsWith(mainHeadHash))) {
             // main과 같은 커밋을 가리키면 라벨을 표시하지 않음
             return;
         }
 
-        // 해당 브랜치에만 속한 노드 찾기 (이 브랜치의 고유 커밋)
-        // branches 배열에 이 브랜치만 포함되거나, branch가 이 브랜치인 노드
-        let exclusiveNodes = Object.values(positions).filter((p) => {
+        let candidateNodes = [];
+
+        // 1. 먼저 branchHeads를 사용해서 HEAD 커밋 찾기 (가장 확실한 방법)
+        if (branchHeadHash) {
+            const headNodeEntry = Object.entries(positions).find(([hash, node]) => {
+                return hash === branchHeadHash || 
+                       hash.startsWith(branchHeadHash) || 
+                       branchHeadHash.startsWith(hash) ||
+                       node.shortHash === branchHeadHash ||
+                       (node.branches && node.branches.includes(branchName) && 
+                        (hash === branchHeadHash || hash.startsWith(branchHeadHash) || branchHeadHash.startsWith(hash)));
+            });
+            if (headNodeEntry) {
+                candidateNodes.push(headNodeEntry[1]);
+            }
+        }
+
+        // 2. 해당 브랜치에만 속한 노드 찾기 (이 브랜치의 고유 커밋)
+        const exclusiveNodes = Object.values(positions).filter((p) => {
             // 이 브랜치 전용 커밋: branch가 이 브랜치이거나
             if (p.branch === branchName) return true;
             // branches 배열이 이 브랜치만 포함하는 경우
             if (p.branches && p.branches.length === 1 && p.branches[0] === branchName) return true;
             return false;
         });
+        candidateNodes.push(...exclusiveNodes);
 
-        // 고유 커밋이 없으면 이 브랜치에 속한 모든 노드 중에서 선택 (하위 호환성)
-        if (exclusiveNodes.length === 0) {
-            exclusiveNodes = Object.values(positions).filter((p) =>
+        // 3. 고유 커밋이 없으면 이 브랜치에 속한 모든 노드 중에서 선택 (하위 호환성)
+        if (candidateNodes.length === 0) {
+            const branchNodes = Object.values(positions).filter((p) =>
                 p.branch === branchName || (p.branches && p.branches.includes(branchName))
             );
+            candidateNodes.push(...branchNodes);
         }
 
-        // 노드를 찾지 못하면 branchHeads를 사용해서 해당 커밋 찾기
-        if (exclusiveNodes.length === 0 && branchHeads && branchHeads[branchName]) {
-            const headHash = branchHeads[branchName];
-            const headNode = Object.entries(positions).find(([hash, _]) => hash.startsWith(headHash));
-            if (headNode) {
-                exclusiveNodes = [headNode[1]];
-            }
+        // 4. isHead가 이 브랜치인 노드 찾기
+        if (candidateNodes.length === 0) {
+            const headNodes = Object.values(positions).filter((p) => p.isHead === branchName);
+            candidateNodes.push(...headNodes);
         }
 
-        if (exclusiveNodes.length > 0) {
+        // 5. 최종적으로 positions에서 브랜치 이름으로 시작하는 노드 찾기 (fallback)
+        if (candidateNodes.length === 0) {
+            const fallbackNodes = Object.values(positions).filter((p) => {
+                // branch 속성이 브랜치 이름을 포함하거나
+                if (p.branch && p.branch.includes(branchName)) return true;
+                // branches 배열에 브랜치가 포함되어 있으면
+                if (p.branches && p.branches.includes(branchName)) return true;
+                return false;
+            });
+            candidateNodes.push(...fallbackNodes);
+        }
+
+        // 중복 제거 (같은 노드가 여러 번 포함될 수 있음)
+        const uniqueNodes = Array.from(new Map(candidateNodes.map(node => [node.x + ',' + node.y, node])).values());
+
+        if (uniqueNodes.length > 0) {
             // y 좌표가 가장 작은 것 (가장 위에 있는 것) 선택
-            exclusiveNodes.sort((a, b) => a.y - b.y);
-            labels[branchName] = { point: exclusiveNodes[0], color };
+            uniqueNodes.sort((a, b) => a.y - b.y);
+            labels[branchName] = { point: uniqueNodes[0], color };
         }
     });
 

@@ -25,20 +25,49 @@ export default function PublicReposPage() {
             : api.저장소.공개목록();
 
         fetchRepos
-            .then(data => {
+            .then(async data => {
                 const repoList = Array.isArray(data) ? data : (Array.isArray(data?.repositories) ? data.repositories : (Array.isArray(data?.items) ? data.items : []));
-                setRepos(repoList);
+                
+                // 각 저장소에 대해 접근 가능 여부 확인 (403 에러가 발생하는 비공개 저장소 필터링)
+                // 병렬로 처리하여 성능 향상
+                const accessibilityChecks = repoList.map(async (repo) => {
+                    const repoId = repo?.id || repo?._id || repo?.repoId;
+                    if (!repoId) {
+                        return { repo, accessible: false };
+                    }
+                    
+                    try {
+                        // 간단한 상태 조회로 접근 가능 여부 확인
+                        await api.저장소.상태(repoId);
+                        return { repo, accessible: true };
+                    } catch (err) {
+                        // 403 에러인 경우 비공개 저장소로 간주하고 제외
+                        if (err.status === 403) {
+                            console.log(`비공개 저장소 제외: ${repo.name} (ID: ${repoId})`);
+                            return { repo, accessible: false };
+                        }
+                        // 다른 에러의 경우에도 일단 포함 (네트워크 에러 등일 수 있음)
+                        return { repo, accessible: true };
+                    }
+                });
+                
+                const results = await Promise.all(accessibilityChecks);
+                const accessibleRepos = results
+                    .filter(result => result.accessible)
+                    .map(result => result.repo);
+                
+                setRepos(accessibleRepos);
 
-                // [신규] 목록을 받은 후, 첫 번째 레포에서 소유자 이메일을 추출
-                if (userId && repoList.length > 0) {
-                    const firstRepo = repoList[0];
+                // [신규] 목록을 받은 후, 첫 번째 저장소에서 소유자 이메일을 추출
+                if (userId && accessibleRepos.length > 0) {
+                    const firstRepo = accessibleRepos[0];
                     if (firstRepo.owner && firstRepo.owner.email) {
                         setOwnerEmail(firstRepo.owner.email);
                     }
                 }
             })
             .catch(err => {
-                setError(err.message || '레포지토리 목록을 불러오는 데 실패했습니다.');
+                setError(err.message || '저장소 목록을 불러오는 데 실패했습니다.');
             })
             .finally(() => {
                 setLoading(false);
@@ -49,7 +78,7 @@ export default function PublicReposPage() {
         console.log("Attempting to fork:", repoToFork);
         const repoId = repoToFork?.id || repoToFork?._id || repoToFork?.repoId;
         if (!repoId) {
-            setError('가져올 레포지토리 ID를 찾을 수 없습니다.');
+            setError('가져올 저장소 ID를 찾을 수 없습니다.');
             return;
         }
 
@@ -57,7 +86,7 @@ export default function PublicReposPage() {
         setError('');
         try {
             const forkedRepo = await api.저장소.복사하기(repoId);
-            alert(`'${repoToFork.name}' 레포지토리를 성공적으로 내 저장소로 가져왔습니다!`);
+            alert(`'${repoToFork.name}' 저장소를 성공적으로 내 저장소로 가져왔습니다!`);
             navigate('/app');
         } catch (err) {
             const specificError = err.data?.message || err.message;
@@ -72,11 +101,11 @@ export default function PublicReposPage() {
             <Header />
             <div className="page-content">
                 {/* [수정됨] userId 대신 ownerEmail을 표시 (없으면 userId를 폴백으로 사용) */}
-                <h2>{userId ? `${ownerEmail || userId}의 공개 레포지토리` : '공개 레포지토리'}</h2>
+                <h2>{userId ? `${ownerEmail || userId}의 공개 저장소` : '공개 저장소'}</h2>
                 <p className="page-description">
-                    다른 사용자들이 공개한 레포지토리를 둘러볼 수 있습니다.
+                    다른 사용자들이 공개한 저장소를 둘러볼 수 있습니다.
                     <br />
-                    내 저장소로 가져오기 버튼을 누르면 해당 레포지토리를 내 계정으로 복제하여 자유롭게 수정하고 관리할 수 있습니다.
+                    내 저장소로 가져오기 버튼을 누르면 해당 저장소를 내 계정으로 복제하여 자유롭게 수정하고 관리할 수 있습니다.
                 </p>
 
                 {loading && <div><span className="spinner" /> 목록 로딩 중...</div>}
@@ -92,7 +121,7 @@ export default function PublicReposPage() {
                 {!loading && (
                     <div className="repo-list-public">
                         {repos.length === 0 && !error && (
-                            <div className="empty">공개된 레포지토리가 없습니다.</div>
+                            <div className="empty">공개된 저장소가 없습니다.</div>
                         )}
                         {repos.map(repo => {
                             const repoDisplayId = repo?.id || repo?._id || repo?.repoId;

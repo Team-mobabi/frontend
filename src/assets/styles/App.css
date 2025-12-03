@@ -3364,6 +3364,8 @@ input:checked + .slider:before {
     color: var(--text);
     border-bottom-left-radius: 4px;
     margin-right: auto;
+    max-width: 100%;
+    width: 100%;
 }
 
 /* 빠른 선택 버튼 (Chip 형식) */
