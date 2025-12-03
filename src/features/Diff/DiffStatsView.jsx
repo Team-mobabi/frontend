@@ -51,27 +51,43 @@ export default function DiffStatsView() {
     }, [selectedRepoId, graphVersion, stagingArea?.length]);
 
     if (loading) return <div className="diff-stats-panel">변경 사항 계산 중...</div>;
-    if (!stats || (!stats.totalInsertions && !stats.totalDeletions && !stats.filesChanged)) return null;
 
     return (
         <div className="diff-stats-panel">
             <div className="diff-stats-title">현재 변경 사항 요약</div>
             {error && <div className="diff-error">{error}</div>}
 
-            <div className="stats-container">
-                <div className="stat-item files">
-                    <div className="label">파일 변경됨</div>
-                    <strong>{stats.filesChanged || 0}</strong>
+            {!stats || (!stats.totalInsertions && !stats.totalDeletions && !stats.filesChanged) ? (
+                <div className="stats-container">
+                    <div className="stat-item files">
+                        <div className="label">파일 변경됨</div>
+                        <strong>0</strong>
+                    </div>
+                    <div className="stat-item insertions">
+                        <div className="label">추가된 라인</div>
+                        <strong>+0</strong>
+                    </div>
+                    <div className="stat-item deletions">
+                        <div className="label">삭제된 라인</div>
+                        <strong>-0</strong>
+                    </div>
                 </div>
-                <div className="stat-item insertions">
-                    <div className="label">추가된 라인</div>
-                    <strong>+{stats.totalInsertions || 0}</strong>
+            ) : (
+                <div className="stats-container">
+                    <div className="stat-item files">
+                        <div className="label">파일 변경됨</div>
+                        <strong>{stats.filesChanged || 0}</strong>
+                    </div>
+                    <div className="stat-item insertions">
+                        <div className="label">추가된 라인</div>
+                        <strong>+{stats.totalInsertions || 0}</strong>
+                    </div>
+                    <div className="stat-item deletions">
+                        <div className="label">삭제된 라인</div>
+                        <strong>-{stats.totalDeletions || 0}</strong>
+                    </div>
                 </div>
-                <div className="stat-item deletions">
-                    <div className="label">삭제된 라인</div>
-                    <strong>-{stats.totalDeletions || 0}</strong>
-                </div>
-            </div>
+            )}
         </div>
     );
 }

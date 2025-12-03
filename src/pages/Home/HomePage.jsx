@@ -96,13 +96,33 @@ export default function HomePage(){
                     </>
                 );
             case "diff":
-                return <DiffView />;
+                return (
+                    <>
+                        <DiffStatsView />
+                        <DiffView />
+                    </>
+                );
             case "prs":
-                return <PullRequestListView />;
+                return (
+                    <>
+                        <DiffStatsView />
+                        <PullRequestListView />
+                    </>
+                );
             case "pr_detail":
-                return <PullRequestDetailView />;
+                return (
+                    <>
+                        <DiffStatsView />
+                        <PullRequestDetailView />
+                    </>
+                );
             case "files":
-                return <FileBrowserView />;
+                return (
+                    <>
+                        <DiffStatsView />
+                        <FileBrowserView />
+                    </>
+                );
             default:
                 return (
                     <>

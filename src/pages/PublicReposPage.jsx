@@ -28,39 +28,18 @@ export default function PublicReposPage() {
             .then(async data => {
                 const repoList = Array.isArray(data) ? data : (Array.isArray(data?.repositories) ? data.repositories : (Array.isArray(data?.items) ? data.items : []));
                 
-                // 각 저장소에 대해 접근 가능 여부 확인 (403 에러가 발생하는 비공개 저장소 필터링)
-                // 병렬로 처리하여 성능 향상
-                const accessibilityChecks = repoList.map(async (repo) => {
+                // 공개 저장소 목록 API가 이미 공개된 저장소만 반환하므로 추가 필터링 불필요
+                // 유효한 저장소 ID가 있는 저장소만 필터링
+                const validRepos = repoList.filter(repo => {
                     const repoId = repo?.id || repo?._id || repo?.repoId;
-                    if (!repoId) {
-                        return { repo, accessible: false };
-                    }
-                    
-                    try {
-                        // 간단한 상태 조회로 접근 가능 여부 확인
-                        await api.저장소.상태(repoId);
-                        return { repo, accessible: true };
-                    } catch (err) {
-                        // 403 에러인 경우 비공개 저장소로 간주하고 제외
-                        if (err.status === 403) {
-                            console.log(`비공개 저장소 제외: ${repo.name} (ID: ${repoId})`);
-                            return { repo, accessible: false };
-                        }
-                        // 다른 에러의 경우에도 일단 포함 (네트워크 에러 등일 수 있음)
-                        return { repo, accessible: true };
-                    }
+                    return !!repoId;
                 });
                 
-                const results = await Promise.all(accessibilityChecks);
-                const accessibleRepos = results
-                    .filter(result => result.accessible)
-                    .map(result => result.repo);
-                
-                setRepos(accessibleRepos);
+                setRepos(validRepos);
 
-                // [신규] 목록을 받은 후, 첫 번째 저장소에서 소유자 이메일을 추출
-                if (userId && accessibleRepos.length > 0) {
-                    const firstRepo = accessibleRepos[0];
+                // 목록을 받은 후, 첫 번째 저장소에서 소유자 이메일을 추출
+                if (userId && validRepos.length > 0) {
+                    const firstRepo = validRepos[0];
                     if (firstRepo.owner && firstRepo.owner.email) {
                         setOwnerEmail(firstRepo.owner.email);
                     }

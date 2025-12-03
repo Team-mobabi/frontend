@@ -842,12 +842,12 @@ export default function AIWorkflowSuggestionModal({
     if (!open) return null;
 
     return (
-        <div className="modal-backdrop" onClick={busy ? undefined : onClose}>
+        <div className="modal-backdrop" onClick={busy ? (e) => { e.preventDefault(); e.stopPropagation(); } : onClose}>
             <div className="modal" onClick={(event) => event.stopPropagation()} style={{ maxWidth: "90vw", width: "600px" }}>
                 <div style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
                     <div className="modal-head">
                         <h4>AI 워크플로우 제안</h4>
-                        <button className="modal-close" onClick={onClose}>×</button>
+                        <button className="modal-close" onClick={busy ? (e) => { e.preventDefault(); e.stopPropagation(); } : onClose} disabled={busy}>×</button>
                     </div>
                     <div className="modal-body" style={{ display: "grid", gap: 12, flex: 1 }}>
                         <div className="ai-chat-messages" ref={messagesRef}>
@@ -944,7 +944,7 @@ export default function AIWorkflowSuggestionModal({
                                 placeholder={placeholder}
                             />
                             <div className="ai-chat-input-actions">
-                                <button className="btn" onClick={onClose}>닫기</button>
+                                <button className="btn" onClick={busy ? (e) => { e.preventDefault(); e.stopPropagation(); } : onClose} disabled={busy}>닫기</button>
                                 <button className="btn btn-primary" onClick={handleSend}>
                                     {busy ? "생각 중..." : "보내기"}
                                 </button>
