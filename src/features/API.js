@@ -248,9 +248,9 @@ export const api = {
         },
         충돌: (id) => request("GET", `/repos/${id}/conflicts`),
         충돌해결제안: (id, filePath) => {
-            // AI 호출은 시간이 오래 걸리므로 타임아웃을 60초로 설정
+            // AI 호출은 시간이 오래 걸리므로 타임아웃을 180초로 설정 (큰 파일의 경우 더 오래 걸릴 수 있음)
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 60000);
+            const timeoutId = setTimeout(() => controller.abort(), 180000);
 
             return request("POST", `/repos/${id}/conflicts/ai-suggest`, { filePath }, {
                 signal: controller.signal
