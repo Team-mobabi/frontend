@@ -97,8 +97,10 @@ async function request(method, path, body, options = {}) {
         if (res.ok) {
             if (options.responseType === "blob") return res.blob();
             if (options.responseType === "text") return res.text();
-            if (res.status === 204 || res.headers.get("content-length") === "0") return null;
-            return res.json();
+            if (res.status === 204) return null;
+            // chunked 응답 등 content-length 없이 본문이 빈 경우도 안전하게 처리
+            const text = await res.text();
+            return text ? JSON.parse(text) : null;
         }
 
         let data = null;
@@ -177,14 +179,11 @@ export const api = {
             const data = await request("POST", "/auth/signin", payload);
             const accessToken = data?.accessToken;
             const refreshToken = data?.refreshToken;
-            if (accessToken && refreshToken) {
-                setToken(accessToken, refreshToken);
-                return { ...data, status: "authenticated" };
+            if (!accessToken || !refreshToken) {
+                throw new Error("로그인 토큰을 받지 못했습니다.");
             }
-            if (data?.status === "pending_verification") {
-                return { ...data, status: "pending_verification" };
-            }
-            throw new Error("로그인 응답이 올바르지 않습니다.");
+            setToken(accessToken, refreshToken);
+            return data;
         },
         logout: async () => {
             try {

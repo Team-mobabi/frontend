@@ -13,7 +13,13 @@ import "./assets/styles/App.css"; // 경로 확인
 
 function Gate() {
     const { user, busy } = useAuth();
-    if (busy) return null; // 또는 로딩 스피너
+    if (busy) {
+        return (
+            <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <div className="spinner" role="status" aria-label="로딩 중" />
+            </div>
+        );
+    }
 
     if (!user) {
         return (

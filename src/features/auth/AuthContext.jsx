@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
-import { api, getToken, setToken, clearToken } from "../API";
+import { api, getToken, clearToken } from "../API";
 import { LS_KEY as LAST_REPO_KEY } from "../GitCore/GitContext.jsx";
 
 const AuthCtx = createContext(null);
@@ -41,16 +41,8 @@ export function AuthProvider({ children }) {
             localStorage.removeItem(LAST_REPO_KEY);
         } catch {}
 
-        const res = await api.auth.login({ email, password }); // auth.login 호출
-
-        const accessToken = res?.accessToken;
-        const refreshToken = res?.refreshToken;
-
-        if (!accessToken || !refreshToken) {
-            throw new Error("로그인 토큰을 받지 못했습니다.");
-        }
-
-        setToken(accessToken, refreshToken);
+        // 토큰 검증·저장은 api.auth.login에서 처리
+        await api.auth.login({ email, password });
         return await refresh();
     };
 
