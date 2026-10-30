@@ -1,6 +1,6 @@
 import { createLogger } from "../../lib/logger";
 import type { GraphCommit, GraphSide, RepoGraph } from "../../types/api";
-import type { LineSegment, Point } from "./BranchLine";
+import type { LineSegment, Point } from "./graphPath";
 
 // 커밋 그래프 레이아웃 계산 (순수 함수 모음)
 
@@ -402,7 +402,13 @@ export function calcBranchLabels(positions: Positions, branchHeads: Record<strin
     // main을 먼저 처리
     if (branchNames.includes('main')) {
         const mainNodes = Object.values(positions).filter((p) => p.branch === 'main' || (p.branches && p.branches.includes('main')));
-        if (mainNodes.length > 0) {
+        // 다른 브랜치와 마찬가지로 main의 HEAD 커밋 옆에 라벨을 둔다 (없으면 가장 위 커밋)
+        const headEntry = mainHeadHash
+            ? Object.entries(positions).find(([hash, node]) => hashesMatch(hash, mainHeadHash) || node.shortHash === mainHeadHash)
+            : undefined;
+        if (headEntry) {
+            labels.main = { point: headEntry[1], color: branchColorMap.main };
+        } else if (mainNodes.length > 0) {
             mainNodes.sort((a, b) => a.y - b.y);
             labels.main = { point: mainNodes[0], color: branchColorMap.main };
         }

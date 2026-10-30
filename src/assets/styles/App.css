@@ -130,6 +130,12 @@ body {
 }
 
 .sidebar {
+    /* 내용 높이만큼만 차지하고 스크롤 시 따라온다 */
+    align-self: start;
+    position: sticky;
+    top: 80px;
+    max-height: calc(100vh - 96px);
+    overflow-y: auto;
     background: var(--panel);
     border: 1px solid var(--line);
     border-radius: var(--radius);
@@ -2269,6 +2275,12 @@ input:checked + .slider:before {
 @media (max-width: 1100px) {
     .main-content {
         grid-template-columns:1fr
+    }
+
+    /* 한 줄 배치에서는 사이드바가 화면을 가리지 않도록 고정 해제 */
+    .sidebar {
+        position: static;
+        max-height: none;
     }
 }
 
@@ -4484,4 +4496,443 @@ input:checked + .slider:before {
 
 .fb-icon-btn--delete {
     color: var(--danger);
+}
+
+/* =========================
+   D3 commit graph
+========================= */
+.d3-graph-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+}
+
+.d3-graph-head h3 {
+    margin: 0;
+}
+
+.d3-graph-fit {
+    border: 1px solid var(--line);
+    background: var(--panel);
+    color: var(--sub);
+    font-size: 12px;
+    font-weight: 600;
+    padding: 4px 10px;
+    border-radius: 999px;
+    cursor: pointer;
+}
+
+.d3-graph-fit:hover {
+    color: var(--accent);
+    border-color: var(--accent);
+}
+
+.commit-graph.d3-graph {
+    padding-top: 0;
+    overflow: hidden;
+    background:
+        radial-gradient(circle at 1px 1px, rgba(75, 90, 228, .10) 1px, transparent 0) 0 0 / 18px 18px,
+        var(--panel-2);
+}
+
+.d3-graph-svg {
+    display: block;
+    cursor: grab;
+    touch-action: none;
+}
+
+.d3-graph-svg:active {
+    cursor: grabbing;
+}
+
+.d3-graph-empty {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--muted);
+    font-size: 13px;
+    pointer-events: none;
+}
+
+.gnode .gnode-dot {
+    stroke: #fff;
+    stroke-width: 2.5;
+    filter: drop-shadow(0 3px 6px rgba(20, 24, 60, .18));
+    transition: r .2s ease;
+}
+
+.gnode .gnode-halo {
+    fill: none;
+    stroke-width: 2;
+    opacity: 0;
+    transition: opacity .2s ease;
+}
+
+.gnode.clickable {
+    cursor: pointer;
+}
+
+.gnode:hover .gnode-halo,
+.gnode.is-head .gnode-halo {
+    opacity: .35;
+}
+
+.gnode.is-merge .gnode-dot {
+    stroke: #f5d0fe;
+}
+
+.gnode.is-recent .gnode-halo {
+    opacity: .6;
+    animation: gnodePulse 1.4s ease-in-out 3;
+}
+
+@keyframes gnodePulse {
+    0%, 100% { stroke-width: 2; }
+    50% { stroke-width: 6; }
+}
+
+.gnode-msg-bg {
+    fill: rgba(255, 255, 255, .85);
+}
+
+.gnode-msg {
+    font-size: 12.5px;
+    font-weight: 600;
+    fill: var(--text);
+    pointer-events: none;
+}
+
+.gnode-hash {
+    font-size: 11px;
+    fill: var(--muted);
+    pointer-events: none;
+}
+
+.gnode-chip {
+    font-size: 10px;
+    font-weight: 800;
+}
+
+.chip-head-t { fill: #d97706; }
+.chip-merge-t { fill: #7c3aed; }
+.chip-ff-t { fill: var(--success); }
+
+.glabel rect {
+    fill: #fff;
+    stroke-width: 1.4;
+    filter: drop-shadow(0 4px 8px rgba(0, 0, 0, .08));
+}
+
+.glabel text {
+    font-size: 12px;
+    font-weight: 700;
+    pointer-events: none;
+}
+
+.glabel.clickable {
+    cursor: pointer;
+}
+
+.glabel.clickable:hover rect {
+    fill: var(--accent-light);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .gnode.is-recent .gnode-halo { animation: none; }
+}
+
+/* =========================
+   Landing hero (D3 git flow)
+========================= */
+.hero-gitflow {
+    display: block;
+    width: 100%;
+    height: auto;
+    margin-bottom: 1rem;
+    border-radius: var(--border-radius-small);
+    background:
+        radial-gradient(circle at 1px 1px, rgba(75, 90, 228, .10) 1px, transparent 0) 0 0 / 18px 18px,
+        var(--bg-color-alt);
+    border: 1px solid var(--border-color);
+}
+
+.hero-lane-pill {
+    fill: #fff;
+    stroke: var(--border-color);
+}
+
+.hero-lane-label {
+    font-size: 10.5px;
+    font-weight: 700;
+    fill: var(--sub);
+}
+
+.hero-caption {
+    font-size: 10px;
+    font-weight: 700;
+}
+
+/* 히어로 뒤 장식용 커밋 흐름 */
+.splash-hero {
+    position: relative;
+    overflow: hidden;
+}
+
+.splash-hero > :not(.hero-backdrop) {
+    position: relative;
+    z-index: 1;
+}
+
+.hero-backdrop {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 0;
+}
+
+.hero-box-label {
+    font-size: 10px;
+    font-weight: 700;
+    fill: #3b82f6;
+}
+
+.hero-chip-text {
+    font-size: 10px;
+    font-weight: 700;
+    fill: #fff;
+}
+
+.action-buttons-mockup .btn-mockup {
+    transition: transform .25s ease, border-color .25s ease, color .25s ease, box-shadow .25s ease;
+}
+
+/* 카드 안에서는 가로 스크롤 대신 줄바꿈 — 스크롤 컨테이너가 위로 뜨는 버튼·그림자를 자르지 않게 */
+.sv-card .action-buttons-mockup {
+    flex-wrap: wrap;
+    justify-content: center;
+    overflow: visible;
+    padding: 6px 0 10px;
+}
+
+.action-buttons-mockup .btn-mockup.is-active {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 14px rgba(75, 90, 228, .18);
+    background: #fff;
+}
+
+.sv-step {
+    padding: .35rem .5rem;
+    border-radius: 8px;
+    transition: background .25s ease;
+}
+
+.sv-step.is-active {
+    background: var(--accent-light);
+}
+
+.sv-step.is-active .txt {
+    color: var(--text);
+    font-weight: 700;
+}
+
+.sv-step.is-active .dot {
+    box-shadow: 0 0 0 4px rgba(75, 90, 228, .15);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .action-buttons-mockup .btn-mockup,
+    .sv-step {
+        transition: none;
+    }
+}
+
+/* 랜딩: 좁은 화면에서 강제 줄바꿈·한 줄 칩이 넘치지 않도록 */
+@media (max-width: 768px) {
+    .splash-copy .lead br {
+        display: none;
+    }
+
+    .trust {
+        flex-wrap: wrap;
+        overflow-x: visible;
+    }
+}
+
+/* =========================
+   Landing: 사용 이유 (초보자 연습장)
+========================= */
+.why {
+    background: var(--bg-color);
+    border-top: 1px solid var(--border-color);
+    padding: 5rem 2rem;
+}
+
+.why-inner {
+    max-width: 1080px;
+    margin: 0 auto;
+}
+
+.why-eyebrow {
+    margin: 0 0 .5rem;
+    font-size: .85rem;
+    font-weight: 800;
+    letter-spacing: .04em;
+    color: var(--accent);
+    text-align: center;
+}
+
+.why-title {
+    margin: 0 0 1rem;
+    font-size: 2.1rem;
+    font-weight: 800;
+    color: var(--heading-color);
+    text-align: center;
+    word-break: keep-all;
+}
+
+.why-lead {
+    max-width: 640px;
+    margin: 0 auto 3rem;
+    font-size: 1.05rem;
+    line-height: 1.7;
+    color: var(--text-color-light);
+    text-align: center;
+    word-break: keep-all;
+}
+
+.why-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 1rem;
+}
+
+.why-card {
+    background: var(--bg-color-alt);
+    border: 1px solid var(--border-color);
+    border-top: 3px solid var(--why-color);
+    border-radius: var(--border-radius-large);
+    padding: 1.4rem 1.25rem;
+    word-break: keep-all;
+}
+
+.why-worry {
+    display: inline-block;
+    font-size: .8rem;
+    font-weight: 700;
+    color: var(--sub);
+    background: #fff;
+    border: 1px solid var(--border-color);
+    border-radius: 999px;
+    padding: .25rem .7rem;
+    margin-bottom: .9rem;
+}
+
+.why-card-title {
+    margin: 0 0 .5rem;
+    font-size: 1.1rem;
+    font-weight: 800;
+    color: var(--why-color);
+}
+
+.why-card-body {
+    margin: 0;
+    font-size: .92rem;
+    line-height: 1.65;
+    color: var(--text-color-light);
+}
+
+.why-bridge {
+    margin-top: 2.5rem;
+    display: grid;
+    grid-template-columns: 1fr 1.2fr;
+    gap: 2rem;
+    align-items: center;
+    background: var(--accent-light);
+    border-radius: var(--border-radius-large);
+    padding: 1.75rem 2rem;
+    word-break: keep-all;
+}
+
+.why-bridge-copy h3 {
+    margin: 0 0 .5rem;
+    font-size: 1.2rem;
+    font-weight: 800;
+    color: var(--heading-color);
+}
+
+.why-bridge-copy p {
+    margin: 0;
+    font-size: .95rem;
+    line-height: 1.65;
+    color: var(--text-color-light);
+}
+
+.why-map {
+    margin: 0;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: .5rem;
+}
+
+.why-map-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .75rem;
+    background: #fff;
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: .55rem .8rem;
+}
+
+.why-map-row dt {
+    font-size: .88rem;
+    font-weight: 700;
+    color: var(--text);
+}
+
+.why-map-row dd {
+    margin: 0;
+}
+
+.why-map-row code {
+    font-size: .8rem;
+    color: var(--accent);
+    background: var(--accent-light);
+    padding: .15rem .45rem;
+    border-radius: 6px;
+}
+
+@media (max-width: 1024px) {
+    .why-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .why-bridge {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 560px) {
+    .why {
+        padding: 3.5rem 16px;
+    }
+
+    .why-title {
+        font-size: 1.6rem;
+    }
+
+    .why-grid,
+    .why-map {
+        grid-template-columns: 1fr;
+    }
+
+    .why-bridge {
+        padding: 1.25rem;
+    }
 }

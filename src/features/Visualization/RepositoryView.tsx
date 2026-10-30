@@ -1,11 +1,11 @@
-import { useEffect, useMemo, useState, type MouseEvent } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useGit } from "../GitCore/GitContext";
 import { api, errorMessage, isConflictError, isMergeInProgressError } from "../../lib/api";
 import { createLogger } from "../../lib/logger";
 import type { Repo } from "../../types/api";
 import AnimationEngine from "./AnimationEngine";
 import StagingArea from "./StagingArea";
-import GraphPanel from "./GraphPanel";
+import GraphPanel, { type TipAnchor } from "./GraphPanel";
 import {
     EMPTY_GRAPH,
     buildGraphState,
@@ -160,7 +160,7 @@ export default function RepositoryView() {
         return allPositions.length === 0 ? 260 : Math.max(...allPositions.map((p) => p.y)) + 80;
     }, [localPos, remotePos]);
 
-    const showTip = (evt: MouseEvent, lines: string[]) =>
+    const showTip = (evt: TipAnchor, lines: string[]) =>
         setTip({ show: true, x: evt.clientX + 15, y: evt.clientY + 15, lines });
     const hideTip = () => setTip((s) => ({ ...s, show: false }));
 
