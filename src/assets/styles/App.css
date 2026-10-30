@@ -4465,3 +4465,23 @@ input:checked + .slider:before {
     word-wrap: break-word;
     pointer-events: auto;
 }
+
+/* FileBrowser icon buttons */
+.fb-icon-btn {
+    padding: 4px 8px;
+    font-size: 12px;
+    opacity: 0.7;
+    transition: opacity 0.2s;
+}
+
+.fb-icon-btn:hover {
+    opacity: 1;
+}
+
+.fb-icon-btn--download {
+    color: var(--primary);
+}
+
+.fb-icon-btn--delete {
+    color: var(--danger);
+}
