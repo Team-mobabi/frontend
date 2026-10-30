@@ -1,0 +1,85 @@
+import { memo, useRef, useEffect, useMemo } from "react";
+import StagedDiffView from "../../features/Diff/StagedDiffView";
+import Modal from "./Modal";
+
+const MODAL_STYLE = { minWidth: 600, maxWidth: 900 } as const;
+const BODY_STYLE = { display: "flex", flexDirection: "column", gap: 16 } as const;
+
+interface CommitConfirmModalProps {
+    open: boolean;
+    onClose: () => void;
+    onConfirm: () => void;
+    message: string;
+    onMessageChange: (message: string) => void;
+}
+
+const CommitConfirmModal = memo(function CommitConfirmModal({ open, onClose, onConfirm, message, onMessageChange }: CommitConfirmModalProps) {
+    // 모달이 열릴 때만 새로운 key 생성 (안정적인 key 유지)
+    const stagedDiffKeyRef = useRef(0);
+
+    useEffect(() => {
+        if (open) {
+            stagedDiffKeyRef.current += 1;
+        }
+    }, [open]);
+
+    // StagedDiffView를 메모이제이션하여 message 변경 시 리렌더링 방지
+    // open이 변경될 때만 새로운 인스턴스 생성
+    const stagedDiffView = useMemo(() => {
+        if (!open) return null;
+        return <StagedDiffView key={`staged-diff-${stagedDiffKeyRef.current}`} compact={true} collapsible={true} />;
+    }, [open]);
+
+    return (
+        <Modal
+            open={open}
+            title="현재 상태 저장"
+            onClose={onClose}
+            closeOnBackdrop={false}
+            width="60vw"
+            style={MODAL_STYLE}
+            bodyStyle={BODY_STYLE}
+            footer={
+                <>
+                    <button className="btn" onClick={onClose}>
+                        취소
+                    </button>
+                    <button className="btn btn-success" onClick={onConfirm}>
+                        현재 상태 저장
+                    </button>
+                </>
+            }
+        >
+            <div>
+                <label htmlFor="commitMessage" style={{ display: "block", marginBottom: 8, fontWeight: "bold" }}>
+                    저장 메시지
+                </label>
+                <textarea
+                    id="commitMessage"
+                    className="input"
+                    placeholder="변경 내용을 요약해주세요..."
+                    value={message}
+                    onChange={(e) => onMessageChange(e.target.value)}
+                    rows={3}
+                    style={{ width: "100%", resize: "vertical" }}
+                />
+            </div>
+            <div>
+                <label style={{ display: "block", marginBottom: 8, fontWeight: "bold" }}>
+                    올릴 예정인 변경사항
+                </label>
+                <div style={{
+                    border: "1px solid #ddd",
+                    borderRadius: 4,
+                    maxHeight: "400px",
+                    overflowY: "auto",
+                    overflowX: "hidden"
+                }}>
+                    {stagedDiffView}
+                </div>
+            </div>
+        </Modal>
+    );
+});
+
+export default CommitConfirmModal;
