@@ -4,6 +4,9 @@ const BASE_URL =
     "";
 const DEBUG = String(import.meta.env?.VITE_API_DEBUG ?? import.meta.env?.DEV).toLowerCase() === "true";
 
+// 배포 경로(/mobabi/ui/) 기준 루트. vite의 base 설정을 따른다
+const APP_BASE = import.meta.env?.BASE_URL || "/";
+
 const tokenKey = "gitgui_token";
 const refreshTokenKey = "gitgui_refreshToken";
 
@@ -69,13 +72,15 @@ async function request(method, path, body, options = {}) {
         headers["Authorization"] = `Bearer ${authToken}`;
     }
 
+    // 재시도 시 원본 body를 다시 넘기므로 인자를 직접 변경하지 않는다 (이중 stringify 방지)
+    let payload = body;
     if (body) {
         if (body instanceof FormData) {
         } else if (body instanceof URLSearchParams) {
             headers["Content-Type"] = "application/x-www-form-urlencoded";
         } else {
             headers["Content-Type"] = "application/json";
-            body = JSON.stringify(body);
+            payload = JSON.stringify(body);
         }
     } else if (method === "POST" || method === "PUT" || method === "PATCH") {
         headers["Content-Type"] = "application/json";
@@ -85,7 +90,7 @@ async function request(method, path, body, options = {}) {
         const res = await fetch((BASE_URL || "") + path, {
             method,
             headers,
-            body,
+            body: payload,
             signal: options.signal,
         });
 
@@ -120,7 +125,7 @@ async function request(method, path, body, options = {}) {
             const rToken = getRefreshToken();
             if (!rToken) {
                 clearToken();
-                window.location.href = '/';
+                window.location.assign(APP_BASE);
                 return Promise.reject(new Error("No refresh token"));
             }
 
@@ -146,7 +151,7 @@ async function request(method, path, body, options = {}) {
             } catch (refreshError) {
                 processQueue(refreshError, null);
                 clearToken();
-                window.location.href = '/';
+                window.location.assign(APP_BASE);
                 return Promise.reject(refreshError);
             } finally {
                 isRefreshing = false;

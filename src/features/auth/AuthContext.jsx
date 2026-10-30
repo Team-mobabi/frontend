@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { api, getToken, setToken, clearToken } from "../API";
+import { LS_KEY as LAST_REPO_KEY } from "../GitCore/GitContext.jsx";
 
 const AuthCtx = createContext(null);
 
@@ -21,7 +22,7 @@ export function AuthProvider({ children }) {
                 clearToken();
                 setUser(null);
                 try {
-                    localStorage.removeItem("selectedRepoId");
+                    localStorage.removeItem(LAST_REPO_KEY);
                 } catch {}
             } finally {
                 setBusy(false);
@@ -37,7 +38,7 @@ export function AuthProvider({ children }) {
 
     const login = async ({ email, password }) => {
         try {
-            localStorage.removeItem("selectedRepoId");
+            localStorage.removeItem(LAST_REPO_KEY);
         } catch {}
 
         const res = await api.auth.login({ email, password }); // auth.login 호출
@@ -63,7 +64,7 @@ export function AuthProvider({ children }) {
         clearToken();
         setUser(null);
         try {
-            localStorage.removeItem("selectedRepoId");
+            localStorage.removeItem(LAST_REPO_KEY);
         } catch {}
 
         try {

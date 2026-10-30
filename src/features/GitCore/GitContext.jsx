@@ -2,7 +2,7 @@ import React, { createContext, useContext, useReducer, useEffect } from "react";
 import {repoIdOf} from "./gitUtils.js";
 
 const GitContext = createContext(null);
-const LS_KEY = "git_last_repo";
+export const LS_KEY = "git_last_repo";
 
 const initial = {
     repositories: [],
